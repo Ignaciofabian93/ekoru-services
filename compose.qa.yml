@@ -1,0 +1,40 @@
+services:
+  ekoru-services-qa:
+    image: ekoru-services:qa
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    container_name: ekoru-services-qa
+    env_file:
+      - .env.qa
+    ports:
+      - '4004:4004'
+    networks:
+      - ekoru-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5' # Maximum 0.5 CPU cores (QA environment)
+          memory: 512M # Maximum 512MB RAM (QA environment)
+        reservations:
+          cpus: '0.25' # Minimum 0.25 CPU cores reserved
+          memory: 256M # Minimum 256MB RAM reserved
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'wget',
+          '--quiet',
+          '--tries=1',
+          '--spider',
+          'http://localhost:4004/health',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  ekoru-network:
+    external: true
