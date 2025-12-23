@@ -1,17 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service.js';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service.js";
 import {
   NotFoundError,
   InternalServerError,
-} from '../common/exceptions/index.js';
+} from "../common/exceptions/index.js";
 import {
   calculatePrismaParams,
   createPaginatedResponse,
-} from '../common/utils/index.js';
+} from "../common/utils/index.js";
 
 @Injectable()
-export class CatalogService {
-  private readonly logger = new Logger(CatalogService.name);
+export class ServiceCatalogService {
+  private readonly logger = new Logger(ServiceCatalogService.name);
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -32,12 +32,12 @@ export class CatalogService {
           },
         },
         orderBy: {
-          category: 'asc',
+          category: "asc",
         },
       });
 
       if (!serviceCategories.length) {
-        throw new NotFoundError('No se encontraron categorías de servicios');
+        throw new NotFoundError("No se encontraron categorías de servicios");
       }
 
       return serviceCategories;
@@ -45,9 +45,43 @@ export class CatalogService {
       if (error instanceof NotFoundError) {
         throw error;
       }
-      this.logger.error('Error al obtener el catálogo de servicios:', error);
+      this.logger.error("Error al obtener el catálogo de servicios:", error);
       throw new InternalServerError(
-        'Error al obtener el catálogo de servicios',
+        "Error al obtener el catálogo de servicios"
+      );
+    }
+  }
+
+  async getServiceCategories() {
+    try {
+      const serviceCategories = await this.prisma.serviceCategory.findMany({
+        select: {
+          id: true,
+          category: true,
+          href: true,
+          subcategories: {
+            select: {
+              id: true,
+              subCategory: true,
+              serviceCategoryId: true,
+              href: true,
+            },
+          },
+        },
+      });
+
+      if (!serviceCategories.length) {
+        throw new NotFoundError("No se encontraron categorías de servicios");
+      }
+
+      return serviceCategories;
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+      this.logger.error("Error al obtener las categorías de servicios:", error);
+      throw new InternalServerError(
+        "Error al obtener las categorías de servicios"
       );
     }
   }
@@ -72,7 +106,7 @@ export class CatalogService {
       });
 
       if (!serviceCategory) {
-        throw new NotFoundError('Categoría de servicio no encontrada');
+        throw new NotFoundError("Categoría de servicio no encontrada");
       }
 
       return serviceCategory;
@@ -80,9 +114,9 @@ export class CatalogService {
       if (error instanceof NotFoundError) {
         throw error;
       }
-      this.logger.error('Error al obtener la categoría de servicio:', error);
+      this.logger.error("Error al obtener la categoría de servicio:", error);
       throw new InternalServerError(
-        'Error al obtener la categoría de servicio',
+        "Error al obtener la categoría de servicio"
       );
     }
   }
@@ -90,7 +124,7 @@ export class CatalogService {
   async getServiceSubCategories(
     serviceCategoryId: number,
     page: number = 1,
-    pageSize: number = 10,
+    pageSize: number = 10
   ) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
@@ -121,14 +155,19 @@ export class CatalogService {
         serviceCount: sub._count.services,
       }));
 
-      return createPaginatedResponse(mappedSubcategories, count, page, pageSize);
+      return createPaginatedResponse(
+        mappedSubcategories,
+        count,
+        page,
+        pageSize
+      );
     } catch (error) {
       this.logger.error(
-        'Error al obtener las subcategorías de servicio:',
-        error,
+        "Error al obtener las subcategorías de servicio:",
+        error
       );
       throw new InternalServerError(
-        'Error al obtener las subcategorías de servicio',
+        "Error al obtener las subcategorías de servicio"
       );
     }
   }
@@ -157,7 +196,7 @@ export class CatalogService {
       });
 
       if (!subcategory) {
-        throw new NotFoundError('Subcategoría de servicio no encontrada');
+        throw new NotFoundError("Subcategoría de servicio no encontrada");
       }
 
       return {
@@ -168,12 +207,9 @@ export class CatalogService {
       if (error instanceof NotFoundError) {
         throw error;
       }
-      this.logger.error(
-        'Error al obtener la subcategoría de servicio:',
-        error,
-      );
+      this.logger.error("Error al obtener la subcategoría de servicio:", error);
       throw new InternalServerError(
-        'Error al obtener la subcategoría de servicio',
+        "Error al obtener la subcategoría de servicio"
       );
     }
   }

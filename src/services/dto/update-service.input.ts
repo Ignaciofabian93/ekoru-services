@@ -1,6 +1,14 @@
-import { InputType, Field, ID, Int, Float } from '@nestjs/graphql';
-import { IsString, IsOptional, IsNumber, IsArray, IsBoolean } from 'class-validator';
-import { ServicePricing } from '../../graphql/enums/index.js';
+import { InputType, Field, ID, Int, Float } from "@nestjs/graphql";
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsArray,
+  IsBoolean,
+  IsJSON,
+} from "class-validator";
+import { GraphQLJSON } from "graphql-scalars";
+import { ServicePricing } from "../../graphql/enums/index.js";
 
 @InputType()
 export class UpdateServiceInput {
@@ -55,4 +63,41 @@ export class UpdateServiceInput {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  // Availability and scheduling
+  @Field(() => GraphQLJSON, { nullable: true })
+  @IsOptional()
+  @IsJSON()
+  availabilitySchedule?: any;
+
+  @Field(() => Boolean, { nullable: true })
+  @IsOptional()
+  @IsBoolean()
+  isCurrentlyAvailable?: boolean;
+
+  @Field(() => Int, { nullable: true })
+  @IsOptional()
+  @IsNumber()
+  maxConcurrentBookings?: number;
+
+  @Field(() => Int, { nullable: true })
+  @IsOptional()
+  @IsNumber()
+  advanceBookingDays?: number;
+
+  // Location
+  @Field(() => Int, { nullable: true })
+  @IsOptional()
+  @IsNumber()
+  serviceRadius?: number;
+
+  @Field(() => GraphQLJSON, { nullable: true })
+  @IsOptional()
+  @IsJSON()
+  serviceLocations?: any;
+
+  @Field(() => Boolean, { nullable: true })
+  @IsOptional()
+  @IsBoolean()
+  isRemoteService?: boolean;
 }

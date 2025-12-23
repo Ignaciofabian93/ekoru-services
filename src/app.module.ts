@@ -1,21 +1,22 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { GraphQLModule } from '@nestjs/graphql';
+import { Module } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
+import { GraphQLModule } from "@nestjs/graphql";
 import {
   ApolloFederationDriver,
   ApolloFederationDriverConfig,
-} from '@nestjs/apollo';
-import { Request, Response } from 'express';
-import { PrismaModule } from './prisma/prisma.module.js';
-import { CatalogModule } from './catalog/catalog.module.js';
-import { ServicesModule } from './services/services.module.js';
-import { QuotationsModule } from './quotations/quotations.module.js';
-import { ReviewsModule } from './reviews/reviews.module.js';
-import { DateTimeScalar, JSONScalar } from './graphql/scalars/index.js';
-import configuration from './config/configuration.js';
+} from "@nestjs/apollo";
+import { Request, Response } from "express";
+import { PrismaModule } from "./prisma/prisma.module.js";
+import { ServiceCatalogModule } from "./catalog/catalog.module.js";
+import { ServicesModule } from "./services/services.module.js";
+import { QuotationsModule } from "./quotations/quotations.module.js";
+import { ReviewsModule } from "./reviews/reviews.module.js";
+import { BookingsModule } from "./bookings/bookings.module.js";
+import { DateTimeScalar, JSONScalar } from "./graphql/scalars/index.js";
+import configuration from "./config/configuration.js";
 
 // Import to register enums
-import './graphql/enums/index.js';
+import "./graphql/enums/index.js";
 
 @Module({
   imports: [
@@ -32,15 +33,15 @@ import './graphql/enums/index.js';
         federation: 2,
       },
       sortSchema: true,
-      playground: process.env.NODE_ENV !== 'production',
+      playground: process.env.NODE_ENV !== "production",
       context: ({ req, res }: { req: Request; res: Response }) => ({
         req,
         res,
-        sellerId: req.headers['x-seller-id'] as string | undefined,
-        token: req.headers.authorization?.replace('Bearer ', ''),
+        sellerId: req.headers["x-seller-id"] as string | undefined,
+        token: req.headers.authorization?.replace("Bearer ", ""),
       }),
       formatError: (error) => {
-        if (process.env.NODE_ENV === 'production') {
+        if (process.env.NODE_ENV === "production") {
           delete error.extensions?.exception;
         }
         return error;
@@ -51,10 +52,11 @@ import './graphql/enums/index.js';
     PrismaModule,
 
     // Feature modules
-    CatalogModule,
+    ServiceCatalogModule,
     ServicesModule,
     QuotationsModule,
     ReviewsModule,
+    BookingsModule,
   ],
   providers: [DateTimeScalar, JSONScalar],
 })

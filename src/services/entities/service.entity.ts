@@ -1,7 +1,8 @@
-import { ObjectType, Field, ID, Int, Float, Directive } from '@nestjs/graphql';
-import { ServicePricing } from '../../graphql/enums/index.js';
-import { ServiceSubCategory } from '../../catalog/entities/index.js';
-import { Seller } from './seller.entity.js';
+import { ObjectType, Field, ID, Int, Float, Directive } from "@nestjs/graphql";
+import { GraphQLJSON } from "graphql-scalars";
+import { ServicePricing } from "../../graphql/enums/index.js";
+import { ServiceSubCategory } from "../../catalog/entities/index.js";
+import { Seller } from "./seller.entity.js";
 
 @ObjectType()
 @Directive('@key(fields: "id")')
@@ -48,15 +49,46 @@ export class Service {
   @Field(() => Date)
   updatedAt: Date;
 
+  @Field(() => Date, { nullable: true })
+  deletedAt?: Date;
+
+  // Availability and scheduling
+  @Field(() => GraphQLJSON, { nullable: true })
+  availabilitySchedule?: any;
+
+  @Field(() => Boolean, { nullable: true })
+  isCurrentlyAvailable?: boolean;
+
+  @Field(() => Int, { nullable: true })
+  maxConcurrentBookings?: number;
+
+  @Field(() => Int, { nullable: true })
+  advanceBookingDays?: number;
+
+  // Location
+  @Field(() => Int, { nullable: true })
+  serviceRadius?: number;
+
+  @Field(() => GraphQLJSON, { nullable: true })
+  serviceLocations?: any;
+
+  @Field(() => Boolean, { nullable: true })
+  isRemoteService?: boolean;
+
+  // Relations
   @Field(() => ServiceSubCategory, { nullable: true })
   serviceCategory?: ServiceSubCategory;
 
   @Field(() => Seller, { nullable: true })
   seller?: Seller;
 
+  // Computed fields
   @Field(() => Float, { nullable: true })
   averageRating?: number;
 
   @Field(() => Int)
   reviewCount: number;
+
+  @Field(() => Int, { nullable: true })
+  viewCount?: number;
 }

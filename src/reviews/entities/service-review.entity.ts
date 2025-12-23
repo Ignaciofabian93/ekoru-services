@@ -1,6 +1,6 @@
-import { ObjectType, Field, ID, Int, Directive } from '@nestjs/graphql';
-import { Seller } from '../../services/entities/index.js';
-import { Service } from '../../services/entities/index.js';
+import { ObjectType, Field, ID, Int, Directive } from "@nestjs/graphql";
+import { Seller } from "../../services/entities/index.js";
+import { Service } from "../../services/entities/index.js";
 
 @ObjectType()
 @Directive('@key(fields: "id")')
@@ -23,6 +23,31 @@ export class ServiceReview {
   @Field(() => Date)
   createdAt: Date;
 
+  // Verification
+  @Field(() => Int, { nullable: true })
+  quotationId?: number;
+
+  @Field(() => Int, { nullable: true })
+  bookingId?: number;
+
+  @Field(() => Boolean, { nullable: true })
+  isVerifiedPurchase?: boolean;
+
+  // Review quality
+  @Field(() => Int, { nullable: true })
+  helpfulCount?: number;
+
+  @Field(() => Int, { nullable: true })
+  reportCount?: number;
+
+  // Provider response
+  @Field(() => String, { nullable: true })
+  providerResponse?: string;
+
+  @Field(() => Date, { nullable: true })
+  providerResponseAt?: Date;
+
+  // Relations
   @Field(() => Service, { nullable: true })
   service?: Service;
 
