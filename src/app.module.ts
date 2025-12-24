@@ -12,6 +12,7 @@ import { ServicesModule } from "./services/services.module.js";
 import { QuotationsModule } from "./quotations/quotations.module.js";
 import { ReviewsModule } from "./reviews/reviews.module.js";
 import { BookingsModule } from "./bookings/bookings.module.js";
+import { HealthController } from "./health/health.controller.js";
 import configuration from "./config/configuration.js";
 
 // Import to register enums
@@ -60,5 +61,6 @@ import "./graphql/enums/index.js";
     ReviewsModule,
     BookingsModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}
