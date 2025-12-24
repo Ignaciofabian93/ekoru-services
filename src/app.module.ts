@@ -12,7 +12,7 @@ import { ServicesModule } from "./services/services.module.js";
 import { QuotationsModule } from "./quotations/quotations.module.js";
 import { ReviewsModule } from "./reviews/reviews.module.js";
 import { BookingsModule } from "./bookings/bookings.module.js";
-import { DateTimeScalar, JSONScalar } from "./graphql/scalars/index.js";
+import { DateTimeScalar } from "./graphql/scalars/index.js";
 import configuration from "./config/configuration.js";
 
 // Import to register enums
@@ -58,6 +58,6 @@ import "./graphql/enums/index.js";
     ReviewsModule,
     BookingsModule,
   ],
-  providers: [DateTimeScalar, JSONScalar],
+  providers: [DateTimeScalar],
 })
 export class AppModule {}
