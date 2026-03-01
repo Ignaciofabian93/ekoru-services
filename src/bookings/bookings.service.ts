@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { BookingStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service.js";
 import {
   NotFoundError,
@@ -26,8 +27,6 @@ export class BookingsService {
         where: { id },
         include: {
           service: true,
-          client: true,
-          provider: true,
         },
       });
 
@@ -49,7 +48,7 @@ export class BookingsService {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
 
-      const where = status ? { status } : {};
+      const where = status ? { status: status as BookingStatus } : {};
       const count = await this.prisma.serviceBooking.count({ where });
       const bookings = await this.prisma.serviceBooking.findMany({
         where,
@@ -69,12 +68,15 @@ export class BookingsService {
     clientId: string,
     page: number,
     pageSize: number,
-    status?: string
+    status?: string,
   ) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
 
-      const where = { clientId, ...(status && { status }) };
+      const where = {
+        clientId,
+        ...(status && { status: status as BookingStatus }),
+      };
       const count = await this.prisma.serviceBooking.count({ where });
       const bookings = await this.prisma.serviceBooking.findMany({
         where,
@@ -87,7 +89,7 @@ export class BookingsService {
     } catch (error) {
       this.logger.error("Error al obtener las reservas del cliente:", error);
       throw new InternalServerError(
-        "Error al obtener las reservas del cliente"
+        "Error al obtener las reservas del cliente",
       );
     }
   }
@@ -96,12 +98,15 @@ export class BookingsService {
     providerId: string,
     page: number,
     pageSize: number,
-    status?: string
+    status?: string,
   ) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
 
-      const where = { providerId, ...(status && { status }) };
+      const where = {
+        providerId,
+        ...(status && { status: status as BookingStatus }),
+      };
       const count = await this.prisma.serviceBooking.count({ where });
       const bookings = await this.prisma.serviceBooking.findMany({
         where,
@@ -114,7 +119,7 @@ export class BookingsService {
     } catch (error) {
       this.logger.error("Error al obtener las reservas del proveedor:", error);
       throw new InternalServerError(
-        "Error al obtener las reservas del proveedor"
+        "Error al obtener las reservas del proveedor",
       );
     }
   }
@@ -122,7 +127,7 @@ export class BookingsService {
   async getServiceBookingsByService(
     serviceId: number,
     page: number,
-    pageSize: number
+    pageSize: number,
   ) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
@@ -141,7 +146,7 @@ export class BookingsService {
     } catch (error) {
       this.logger.error("Error al obtener las reservas del servicio:", error);
       throw new InternalServerError(
-        "Error al obtener las reservas del servicio"
+        "Error al obtener las reservas del servicio",
       );
     }
   }

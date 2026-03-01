@@ -6,6 +6,7 @@ import {
   ApolloFederationDriverConfig,
 } from "@nestjs/apollo";
 import { Request, Response } from "express";
+import { GraphQLJSON } from "graphql-scalars";
 import { PrismaModule } from "./prisma/prisma.module.js";
 import { ServiceCatalogModule } from "./catalog/catalog.module.js";
 import { ServicesModule } from "./services/services.module.js";
@@ -17,9 +18,16 @@ import configuration from "./config/configuration.js";
 
 // Import to register enums
 import "./graphql/enums/index.js";
+import { PrometheusModule } from "@willsoto/nestjs-prometheus";
 
 @Module({
   imports: [
+    // Metrics
+    PrometheusModule.register({
+      path: '/metrics',
+      defaultMetrics: { enabled: true },
+    }),
+
     // Configuration
     ConfigModule.forRoot({
       isGlobal: true,
@@ -35,7 +43,7 @@ import "./graphql/enums/index.js";
       sortSchema: true,
       playground: process.env.NODE_ENV !== "production",
       resolvers: {
-        JSON: require("graphql-scalars").GraphQLJSON,
+        JSON: GraphQLJSON,
       },
       context: ({ req, res }: { req: Request; res: Response }) => ({
         req,
