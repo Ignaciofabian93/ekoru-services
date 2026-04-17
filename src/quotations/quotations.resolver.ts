@@ -19,7 +19,11 @@ export class QuotationsResolver {
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
   ) {
-    return this.quotationsService.getQuotationsByClient(clientId, page, pageSize);
+    return this.quotationsService.getQuotationsByClient(
+      clientId,
+      page,
+      pageSize,
+    );
   }
 
   @Query(() => QuotationConnection, { name: 'getQuotationsByProvider' })

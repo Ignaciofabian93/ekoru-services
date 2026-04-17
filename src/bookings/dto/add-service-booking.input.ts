@@ -1,17 +1,18 @@
-import { InputType, Field, Int, Float } from "@nestjs/graphql";
+import { InputType, Field, Int, Float } from '@nestjs/graphql';
 import {
   IsString,
   IsOptional,
   IsNumber,
+  IsInt,
   IsDate,
   IsJSON,
-} from "class-validator";
-import { GraphQLJSON } from "graphql-scalars";
+} from 'class-validator';
+import { GraphQLJSON } from 'graphql-scalars';
 
 @InputType()
 export class AddServiceBookingInput {
   @Field(() => Int)
-  @IsNumber()
+  @IsInt()
   serviceId: number;
 
   @Field(() => String)

@@ -1,7 +1,7 @@
-import { ObjectType, Field, ID, Int, Float, Directive } from "@nestjs/graphql";
-import { GraphQLJSON } from "graphql-scalars";
-import { Seller } from "../../services/entities/seller.entity.js";
-import { Service } from "../../services/entities/service.entity.js";
+import { ObjectType, Field, ID, Int, Float, Directive } from '@nestjs/graphql';
+import { GraphQLJSON } from 'graphql-scalars';
+import { Seller } from '../../services/entities/seller.entity.js';
+import { Service } from '../../services/entities/service.entity.js';
 
 @ObjectType()
 @Directive('@key(fields: "id")')

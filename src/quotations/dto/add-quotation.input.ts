@@ -1,18 +1,19 @@
-import { InputType, Field, Int, Float } from "@nestjs/graphql";
+import { InputType, Field, Int, Float } from '@nestjs/graphql';
 import {
   IsString,
   IsOptional,
   IsNumber,
+  IsInt,
   IsArray,
   IsDate,
   IsJSON,
-} from "class-validator";
-import { GraphQLJSON } from "graphql-scalars";
+} from 'class-validator';
+import { GraphQLJSON } from 'graphql-scalars';
 
 @InputType()
 export class AddQuotationInput {
   @Field(() => Int)
-  @IsNumber()
+  @IsInt()
   serviceId: number;
 
   @Field(() => String)
@@ -38,7 +39,7 @@ export class AddQuotationInput {
 
   @Field(() => Int, { nullable: true })
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   estimatedDuration?: number;
 
   @Field(() => String, { nullable: true })

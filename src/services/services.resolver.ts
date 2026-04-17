@@ -17,7 +17,8 @@ export class ServicesResolver {
   async getServices(
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
-    @Args('isActive', { type: () => Boolean, nullable: true }) isActive?: boolean,
+    @Args('isActive', { type: () => Boolean, nullable: true })
+    isActive?: boolean,
   ) {
     return this.servicesService.getServices(page, pageSize, isActive);
   }
@@ -27,7 +28,8 @@ export class ServicesResolver {
     @Args('sellerId', { type: () => ID }) sellerId: string,
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
-    @Args('isActive', { type: () => Boolean, nullable: true }) isActive?: boolean,
+    @Args('isActive', { type: () => Boolean, nullable: true })
+    isActive?: boolean,
   ) {
     return this.servicesService.getServicesBySeller(
       sellerId,
@@ -42,7 +44,8 @@ export class ServicesResolver {
     @Args('subcategoryId', { type: () => ID }) subcategoryId: string,
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
-    @Args('isActive', { type: () => Boolean, nullable: true }) isActive?: boolean,
+    @Args('isActive', { type: () => Boolean, nullable: true })
+    isActive?: boolean,
   ) {
     return this.servicesService.getServicesBySubCategory(
       parseInt(subcategoryId, 10),
@@ -54,10 +57,12 @@ export class ServicesResolver {
 
   @Query(() => ServiceConnection, { name: 'getServicesByPricingType' })
   async getServicesByPricingType(
-    @Args('pricingType', { type: () => ServicePricing }) pricingType: ServicePricing,
+    @Args('pricingType', { type: () => ServicePricing })
+    pricingType: ServicePricing,
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
-    @Args('isActive', { type: () => Boolean, nullable: true }) isActive?: boolean,
+    @Args('isActive', { type: () => Boolean, nullable: true })
+    isActive?: boolean,
   ) {
     return this.servicesService.getServicesByPricingType(
       pricingType,

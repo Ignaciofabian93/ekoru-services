@@ -1,7 +1,7 @@
-import { ObjectType, Field, Int, Directive } from "@nestjs/graphql";
+import { ObjectType, Field, Int, Directive } from '@nestjs/graphql';
 
 @ObjectType()
-@Directive("@shareable")
+@Directive('@shareable')
 export class PageInfo {
   @Field(() => Boolean)
   hasNextPage: boolean;

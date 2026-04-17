@@ -1,4 +1,5 @@
 import { registerEnumType } from '@nestjs/graphql';
+import { Language } from '@prisma/client';
 
 export enum ServicePricing {
   FIXED = 'FIXED',
@@ -28,6 +29,11 @@ export enum ServiceSortField {
 }
 
 // Register enums with GraphQL
+registerEnumType(Language, {
+  name: 'Language',
+  description: 'Supported languages for multi-language content',
+});
+
 registerEnumType(ServicePricing, {
   name: 'ServicePricing',
   description: 'Service pricing types',

@@ -9,6 +9,10 @@ COPY package-lock.json ./
 
 RUN npm ci
 
+COPY prisma ./prisma
+
+RUN ./node_modules/.bin/prisma generate
+
 COPY . .
 
 RUN npm run build
@@ -27,13 +31,13 @@ COPY package.json ./
 COPY package-lock.json ./
 
 # Install only production dependencies
-RUN npm ci --only=production
+RUN npm ci --omit=dev --ignore-scripts
 
 # Copy prisma schema for runtime
 COPY prisma ./prisma
 
 # Generate Prisma Client using locally installed version
-RUN npx --yes prisma@5.22.0 generate
+RUN ./node_modules/.bin/prisma generate
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
@@ -45,6 +49,6 @@ RUN addgroup -g 1001 appgroup && \
 
 USER appuser
 
-CMD [ "node", "dist/main.js" ]
+CMD [ "node", "dist/src/main.js" ]
 
 EXPOSE 4004

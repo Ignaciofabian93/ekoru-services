@@ -1,6 +1,6 @@
-import { ObjectType, Field, ID, Int, Directive } from "@nestjs/graphql";
-import { Seller } from "../../services/entities/index.js";
-import { Service } from "../../services/entities/index.js";
+import { ObjectType, Field, ID, Int, Directive } from '@nestjs/graphql';
+import { Seller } from '../../services/entities/index.js';
+import { Service } from '../../services/entities/index.js';
 
 @ObjectType()
 @Directive('@key(fields: "id")')

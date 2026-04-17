@@ -1,16 +1,16 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Language } from "@prisma/client";
-import { PrismaService } from "../prisma/prisma.service.js";
+import { Injectable, Logger } from '@nestjs/common';
+import { Language } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service.js';
 import {
   NotFoundError,
   InternalServerError,
-} from "../common/exceptions/index.js";
+} from '../common/exceptions/index.js';
 import {
   calculatePrismaParams,
   createPaginatedResponse,
-} from "../common/utils/index.js";
-import { AddServiceInput, UpdateServiceInput } from "./dto/index.js";
-import { ServicePricing } from "../graphql/enums/index.js";
+} from '../common/utils/index.js';
+import { AddServiceInput, UpdateServiceInput } from './dto/index.js';
+import { ServicePricing } from '../graphql/enums/index.js';
 
 @Injectable()
 export class ServicesService {
@@ -71,7 +71,7 @@ export class ServicesService {
       });
 
       if (!service) {
-        throw new NotFoundError("Servicio no encontrado");
+        throw new NotFoundError('Servicio no encontrado');
       }
 
       const averageRating =
@@ -107,8 +107,8 @@ export class ServicesService {
       if (error instanceof NotFoundError) {
         throw error;
       }
-      this.logger.error("Error al obtener el servicio:", error);
-      throw new InternalServerError("Error al obtener el servicio");
+      this.logger.error('Error al obtener el servicio:', error);
+      throw new InternalServerError('Error al obtener el servicio');
     }
   }
 
@@ -154,8 +154,8 @@ export class ServicesService {
 
       return createPaginatedResponse(mappedServices, count, page, pageSize);
     } catch (error) {
-      this.logger.error("Error al obtener los servicios:", error);
-      throw new InternalServerError("Error al obtener los servicios");
+      this.logger.error('Error al obtener los servicios:', error);
+      throw new InternalServerError('Error al obtener los servicios');
     }
   }
 
@@ -210,9 +210,9 @@ export class ServicesService {
 
       return createPaginatedResponse(mappedServices, count, page, pageSize);
     } catch (error) {
-      this.logger.error("Error al obtener los servicios del vendedor:", error);
+      this.logger.error('Error al obtener los servicios del vendedor:', error);
       throw new InternalServerError(
-        "Error al obtener los servicios del vendedor",
+        'Error al obtener los servicios del vendedor',
       );
     }
   }
@@ -269,11 +269,11 @@ export class ServicesService {
       return createPaginatedResponse(mappedServices, count, page, pageSize);
     } catch (error) {
       this.logger.error(
-        "Error al obtener los servicios por subcategoría:",
+        'Error al obtener los servicios por subcategoría:',
         error,
       );
       throw new InternalServerError(
-        "Error al obtener los servicios por subcategoría",
+        'Error al obtener los servicios por subcategoría',
       );
     }
   }
@@ -330,11 +330,11 @@ export class ServicesService {
       return createPaginatedResponse(mappedServices, count, page, pageSize);
     } catch (error) {
       this.logger.error(
-        "Error al obtener los servicios por tipo de precio:",
+        'Error al obtener los servicios por tipo de precio:',
         error,
       );
       throw new InternalServerError(
-        "Error al obtener los servicios por tipo de precio",
+        'Error al obtener los servicios por tipo de precio',
       );
     }
   }
@@ -399,8 +399,8 @@ export class ServicesService {
         reviewCount: 0,
       };
     } catch (error) {
-      this.logger.error("Error al crear el servicio:", error);
-      throw new InternalServerError("Error al crear el servicio");
+      this.logger.error('Error al crear el servicio:', error);
+      throw new InternalServerError('Error al crear el servicio');
     }
   }
 
@@ -470,8 +470,8 @@ export class ServicesService {
         reviewCount: service._count.serviceReview,
       };
     } catch (error) {
-      this.logger.error("Error al actualizar el servicio:", error);
-      throw new InternalServerError("Error al actualizar el servicio");
+      this.logger.error('Error al actualizar el servicio:', error);
+      throw new InternalServerError('Error al actualizar el servicio');
     }
   }
 
@@ -504,8 +504,8 @@ export class ServicesService {
         reviewCount: 0,
       };
     } catch (error) {
-      this.logger.error("Error al eliminar el servicio:", error);
-      throw new InternalServerError("Error al eliminar el servicio");
+      this.logger.error('Error al eliminar el servicio:', error);
+      throw new InternalServerError('Error al eliminar el servicio');
     }
   }
 
@@ -517,7 +517,7 @@ export class ServicesService {
       });
 
       if (!currentService) {
-        throw new NotFoundError("Servicio no encontrado");
+        throw new NotFoundError('Servicio no encontrado');
       }
 
       const service = await this.prisma.service.update({
@@ -574,8 +574,8 @@ export class ServicesService {
       if (error instanceof NotFoundError) {
         throw error;
       }
-      this.logger.error("Error al cambiar el estado del servicio:", error);
-      throw new InternalServerError("Error al cambiar el estado del servicio");
+      this.logger.error('Error al cambiar el estado del servicio:', error);
+      throw new InternalServerError('Error al cambiar el estado del servicio');
     }
   }
 }

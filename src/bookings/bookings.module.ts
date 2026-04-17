@@ -1,6 +1,6 @@
-import { Module } from "@nestjs/common";
-import { BookingsService } from "./bookings.service.js";
-import { BookingsResolver } from "./bookings.resolver.js";
+import { Module } from '@nestjs/common';
+import { BookingsService } from './bookings.service.js';
+import { BookingsResolver } from './bookings.resolver.js';
 
 @Module({
   providers: [BookingsService, BookingsResolver],

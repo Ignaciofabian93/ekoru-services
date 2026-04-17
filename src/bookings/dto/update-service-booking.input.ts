@@ -1,16 +1,17 @@
-import { InputType, Field, ID, Int, Float } from "@nestjs/graphql";
+import { InputType, Field, ID, Float } from '@nestjs/graphql';
 import {
   IsString,
   IsOptional,
   IsNumber,
   IsDate,
   IsJSON,
-} from "class-validator";
-import { GraphQLJSON } from "graphql-scalars";
+} from 'class-validator';
+import { GraphQLJSON } from 'graphql-scalars';
 
 @InputType()
 export class UpdateServiceBookingInput {
   @Field(() => ID)
+  @IsString()
   id: string;
 
   @Field(() => Date, { nullable: true })

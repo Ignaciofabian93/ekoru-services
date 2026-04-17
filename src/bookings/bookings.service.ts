@@ -1,19 +1,19 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { BookingStatus } from "@prisma/client";
-import { PrismaService } from "../prisma/prisma.service.js";
+import { Injectable, Logger } from '@nestjs/common';
+import { BookingStatus } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service.js';
 import {
   NotFoundError,
   BadRequestError,
   InternalServerError,
-} from "../common/exceptions/index.js";
+} from '../common/exceptions/index.js';
 import {
   calculatePrismaParams,
   createPaginatedResponse,
-} from "../common/utils/index.js";
+} from '../common/utils/index.js';
 import {
   AddServiceBookingInput,
   UpdateServiceBookingInput,
-} from "./dto/index.js";
+} from './dto/index.js';
 
 @Injectable()
 export class BookingsService {
@@ -31,7 +31,7 @@ export class BookingsService {
       });
 
       if (!booking) {
-        throw new NotFoundError("Reserva no encontrada");
+        throw new NotFoundError('Reserva no encontrada');
       }
 
       return booking;
@@ -39,8 +39,8 @@ export class BookingsService {
       if (error instanceof NotFoundError) {
         throw error;
       }
-      this.logger.error("Error al obtener la reserva:", error);
-      throw new InternalServerError("Error al obtener la reserva");
+      this.logger.error('Error al obtener la reserva:', error);
+      throw new InternalServerError('Error al obtener la reserva');
     }
   }
 
@@ -54,13 +54,13 @@ export class BookingsService {
         where,
         skip,
         take,
-        orderBy: { scheduledDate: "asc" },
+        orderBy: { scheduledDate: 'asc' },
       });
 
       return createPaginatedResponse(bookings, count, page, pageSize);
     } catch (error) {
-      this.logger.error("Error al obtener las reservas:", error);
-      throw new InternalServerError("Error al obtener las reservas");
+      this.logger.error('Error al obtener las reservas:', error);
+      throw new InternalServerError('Error al obtener las reservas');
     }
   }
 
@@ -82,14 +82,14 @@ export class BookingsService {
         where,
         skip,
         take,
-        orderBy: { scheduledDate: "asc" },
+        orderBy: { scheduledDate: 'asc' },
       });
 
       return createPaginatedResponse(bookings, count, page, pageSize);
     } catch (error) {
-      this.logger.error("Error al obtener las reservas del cliente:", error);
+      this.logger.error('Error al obtener las reservas del cliente:', error);
       throw new InternalServerError(
-        "Error al obtener las reservas del cliente",
+        'Error al obtener las reservas del cliente',
       );
     }
   }
@@ -112,14 +112,14 @@ export class BookingsService {
         where,
         skip,
         take,
-        orderBy: { scheduledDate: "asc" },
+        orderBy: { scheduledDate: 'asc' },
       });
 
       return createPaginatedResponse(bookings, count, page, pageSize);
     } catch (error) {
-      this.logger.error("Error al obtener las reservas del proveedor:", error);
+      this.logger.error('Error al obtener las reservas del proveedor:', error);
       throw new InternalServerError(
-        "Error al obtener las reservas del proveedor",
+        'Error al obtener las reservas del proveedor',
       );
     }
   }
@@ -139,14 +139,14 @@ export class BookingsService {
         where: { serviceId },
         skip,
         take,
-        orderBy: { scheduledDate: "asc" },
+        orderBy: { scheduledDate: 'asc' },
       });
 
       return createPaginatedResponse(bookings, count, page, pageSize);
     } catch (error) {
-      this.logger.error("Error al obtener las reservas del servicio:", error);
+      this.logger.error('Error al obtener las reservas del servicio:', error);
       throw new InternalServerError(
-        "Error al obtener las reservas del servicio",
+        'Error al obtener las reservas del servicio',
       );
     }
   }
@@ -159,7 +159,7 @@ export class BookingsService {
       });
 
       if (!service || !service.isActive) {
-        throw new BadRequestError("Servicio no disponible");
+        throw new BadRequestError('Servicio no disponible');
       }
 
       const booking = await this.prisma.serviceBooking.create({
@@ -180,8 +180,8 @@ export class BookingsService {
       if (error instanceof BadRequestError) {
         throw error;
       }
-      this.logger.error("Error al crear la reserva:", error);
-      throw new InternalServerError("Error al crear la reserva");
+      this.logger.error('Error al crear la reserva:', error);
+      throw new InternalServerError('Error al crear la reserva');
     }
   }
 
@@ -210,15 +210,15 @@ export class BookingsService {
             cancellationReason: input.cancellationReason,
           }),
           ...(input.cancelledBy && { cancelledBy: input.cancelledBy }),
-          ...(input.status === "COMPLETED" && { completedAt: new Date() }),
+          ...(input.status === 'COMPLETED' && { completedAt: new Date() }),
           updatedAt: new Date(),
         },
       });
 
       return booking;
     } catch (error) {
-      this.logger.error("Error al actualizar la reserva:", error);
-      throw new InternalServerError("Error al actualizar la reserva");
+      this.logger.error('Error al actualizar la reserva:', error);
+      throw new InternalServerError('Error al actualizar la reserva');
     }
   }
 
@@ -227,7 +227,7 @@ export class BookingsService {
       const booking = await this.prisma.serviceBooking.update({
         where: { id },
         data: {
-          status: "CANCELLED",
+          status: 'CANCELLED',
           cancelledBy,
           cancellationReason: reason,
           updatedAt: new Date(),
@@ -236,8 +236,8 @@ export class BookingsService {
 
       return booking;
     } catch (error) {
-      this.logger.error("Error al cancelar la reserva:", error);
-      throw new InternalServerError("Error al cancelar la reserva");
+      this.logger.error('Error al cancelar la reserva:', error);
+      throw new InternalServerError('Error al cancelar la reserva');
     }
   }
 
@@ -246,7 +246,7 @@ export class BookingsService {
       const booking = await this.prisma.serviceBooking.update({
         where: { id },
         data: {
-          status: "COMPLETED",
+          status: 'COMPLETED',
           completedAt: new Date(),
           updatedAt: new Date(),
         },
@@ -254,8 +254,8 @@ export class BookingsService {
 
       return booking;
     } catch (error) {
-      this.logger.error("Error al completar la reserva:", error);
-      throw new InternalServerError("Error al completar la reserva");
+      this.logger.error('Error al completar la reserva:', error);
+      throw new InternalServerError('Error al completar la reserva');
     }
   }
 }

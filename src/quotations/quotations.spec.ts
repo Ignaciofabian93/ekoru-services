@@ -1,13 +1,12 @@
-import { Test, TestingModule } from "@nestjs/testing";
-import { QuotationsService } from "./quotations.service";
-import { PrismaService } from "../prisma/prisma.service";
-import { NotFoundError, InternalServerError } from "../common/exceptions/index";
-import { AddQuotationInput, UpdateQuotationInput } from "./dto/index";
-import { QuotationStatus } from "../graphql/enums/index";
+import { Test, TestingModule } from '@nestjs/testing';
+import { QuotationsService } from './quotations.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { NotFoundError, InternalServerError } from '../common/exceptions/index';
+import { AddQuotationInput, UpdateQuotationInput } from './dto/index';
+import { QuotationStatus } from '../graphql/enums/index';
 
-describe("QuotationsService", () => {
+describe('QuotationsService', () => {
   let service: QuotationsService;
-  let prismaService: PrismaService;
 
   const mockPrismaService = {
     quotation: {
@@ -22,28 +21,28 @@ describe("QuotationsService", () => {
 
   const mockService = {
     id: 1,
-    name: "Test Service",
-    description: "Test Description",
-    pricingType: "FIXED",
+    name: 'Test Service',
+    description: 'Test Description',
+    pricingType: 'FIXED',
   };
 
   const mockQuotation = {
     id: 1,
     serviceId: 1,
-    clientId: "client-123",
-    providerId: "provider-456",
-    title: "Test Quotation",
-    description: "Test quotation description",
+    clientId: 'client-123',
+    providerId: 'provider-456',
+    title: 'Test Quotation',
+    description: 'Test quotation description',
     estimatedPrice: 500,
     finalPrice: null,
     estimatedDuration: 120,
-    status: "PENDING",
-    clientNotes: "Client notes",
+    status: 'PENDING',
+    clientNotes: 'Client notes',
     providerNotes: null,
-    attachments: ["file1.pdf"],
-    createdAt: new Date("2025-12-20"),
-    updatedAt: new Date("2025-12-23"),
-    expiresAt: new Date("2025-12-30"),
+    attachments: ['file1.pdf'],
+    createdAt: new Date('2025-12-20'),
+    updatedAt: new Date('2025-12-23'),
+    expiresAt: new Date('2025-12-30'),
     acceptedAt: null,
     completedAt: null,
   };
@@ -60,32 +59,31 @@ describe("QuotationsService", () => {
     }).compile();
 
     service = module.get<QuotationsService>(QuotationsService);
-    prismaService = module.get<PrismaService>(PrismaService);
 
     jest.clearAllMocks();
   });
 
-  it("should be defined", () => {
+  it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
-  describe("getQuotation", () => {
-    it("should return a quotation with service details", async () => {
+  describe('getQuotation', () => {
+    it('should return a quotation with service details', async () => {
       const mockQuotationWithService = {
         ...mockQuotation,
         service: mockService,
       };
 
       mockPrismaService.quotation.findUnique.mockResolvedValue(
-        mockQuotationWithService
+        mockQuotationWithService,
       );
 
       const result = await service.getQuotation(1);
 
       expect(result).toEqual({
         ...mockQuotationWithService,
-        client: { id: "client-123" },
-        provider: { id: "provider-456" },
+        client: { id: 'client-123' },
+        provider: { id: 'provider-456' },
       });
       expect(mockPrismaService.quotation.findUnique).toHaveBeenCalledWith({
         where: { id: 1 },
@@ -99,128 +97,130 @@ describe("QuotationsService", () => {
       });
     });
 
-    it("should throw NotFoundError when quotation is not found", async () => {
+    it('should throw NotFoundError when quotation is not found', async () => {
       mockPrismaService.quotation.findUnique.mockResolvedValue(null);
 
       await expect(service.getQuotation(999)).rejects.toThrow(
-        new NotFoundError("Cotización no encontrada")
+        new NotFoundError('Cotización no encontrada'),
       );
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.quotation.findUnique.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(service.getQuotation(1)).rejects.toThrow(
-        new InternalServerError("Error al obtener la cotización")
+        new InternalServerError('Error al obtener la cotización'),
       );
     });
   });
 
-  describe("getQuotationsByClient", () => {
+  describe('getQuotationsByClient', () => {
     const mockQuotations = [mockQuotation];
 
-    it("should return paginated quotations for a client", async () => {
+    it('should return paginated quotations for a client', async () => {
       mockPrismaService.quotation.count.mockResolvedValue(1);
       mockPrismaService.quotation.findMany.mockResolvedValue(mockQuotations);
 
-      const result = await service.getQuotationsByClient("client-123", 1, 10);
+      const result = await service.getQuotationsByClient('client-123', 1, 10);
 
       expect(mockPrismaService.quotation.count).toHaveBeenCalledWith({
-        where: { clientId: "client-123" },
+        where: { clientId: 'client-123' },
       });
       expect(mockPrismaService.quotation.findMany).toHaveBeenCalledWith({
-        where: { clientId: "client-123" },
+        where: { clientId: 'client-123' },
         skip: 0,
         take: 10,
       });
       expect(result.nodes).toHaveLength(1);
-      expect(result.nodes[0].client).toEqual({ id: "client-123" });
-      expect(result.nodes[0].provider).toEqual({ id: "provider-456" });
+      expect(result.nodes[0].client).toEqual({ id: 'client-123' });
+      expect(result.nodes[0].provider).toEqual({ id: 'provider-456' });
       expect(result.pageInfo.totalCount).toBe(1);
     });
 
-    it("should return empty quotations when none exist for client", async () => {
+    it('should return empty quotations when none exist for client', async () => {
       mockPrismaService.quotation.count.mockResolvedValue(0);
       mockPrismaService.quotation.findMany.mockResolvedValue([]);
 
-      const result = await service.getQuotationsByClient("new-client", 1, 10);
+      const result = await service.getQuotationsByClient('new-client', 1, 10);
 
       expect(result.nodes).toHaveLength(0);
       expect(result.pageInfo.totalCount).toBe(0);
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.quotation.count.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(
-        service.getQuotationsByClient("client-123", 1, 10)
+        service.getQuotationsByClient('client-123', 1, 10),
       ).rejects.toThrow(
-        new InternalServerError("Error al obtener las cotizaciones del cliente")
+        new InternalServerError(
+          'Error al obtener las cotizaciones del cliente',
+        ),
       );
     });
   });
 
-  describe("getQuotationsByProvider", () => {
+  describe('getQuotationsByProvider', () => {
     const mockQuotations = [mockQuotation];
 
-    it("should return paginated quotations for a provider", async () => {
+    it('should return paginated quotations for a provider', async () => {
       mockPrismaService.quotation.count.mockResolvedValue(1);
       mockPrismaService.quotation.findMany.mockResolvedValue(mockQuotations);
 
       const result = await service.getQuotationsByProvider(
-        "provider-456",
+        'provider-456',
         1,
-        10
+        10,
       );
 
       expect(mockPrismaService.quotation.count).toHaveBeenCalledWith({
-        where: { providerId: "provider-456" },
+        where: { providerId: 'provider-456' },
       });
       expect(mockPrismaService.quotation.findMany).toHaveBeenCalledWith({
-        where: { providerId: "provider-456" },
+        where: { providerId: 'provider-456' },
         skip: 0,
         take: 10,
       });
       expect(result.nodes).toHaveLength(1);
     });
 
-    it("should return empty quotations when none exist for provider", async () => {
+    it('should return empty quotations when none exist for provider', async () => {
       mockPrismaService.quotation.count.mockResolvedValue(0);
       mockPrismaService.quotation.findMany.mockResolvedValue([]);
 
       const result = await service.getQuotationsByProvider(
-        "new-provider",
+        'new-provider',
         1,
-        10
+        10,
       );
 
       expect(result.nodes).toHaveLength(0);
       expect(result.pageInfo.totalCount).toBe(0);
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.quotation.count.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(
-        service.getQuotationsByProvider("provider-456", 1, 10)
+        service.getQuotationsByProvider('provider-456', 1, 10),
       ).rejects.toThrow(
         new InternalServerError(
-          "Error al obtener las cotizaciones del proveedor"
-        )
+          'Error al obtener las cotizaciones del proveedor',
+        ),
       );
     });
   });
 
-  describe("getQuotationsByService", () => {
+  describe('getQuotationsByService', () => {
     const mockQuotations = [mockQuotation];
 
-    it("should return paginated quotations for a service", async () => {
+    it('should return paginated quotations for a service', async () => {
       mockPrismaService.quotation.count.mockResolvedValue(1);
       mockPrismaService.quotation.findMany.mockResolvedValue(mockQuotations);
 
@@ -237,7 +237,7 @@ describe("QuotationsService", () => {
       expect(result.nodes).toHaveLength(1);
     });
 
-    it("should handle custom pagination parameters", async () => {
+    it('should handle custom pagination parameters', async () => {
       mockPrismaService.quotation.count.mockResolvedValue(20);
       mockPrismaService.quotation.findMany.mockResolvedValue(mockQuotations);
 
@@ -247,34 +247,34 @@ describe("QuotationsService", () => {
         expect.objectContaining({
           skip: 10,
           take: 5,
-        })
+        }),
       );
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.quotation.count.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(service.getQuotationsByService(1, 1, 10)).rejects.toThrow(
         new InternalServerError(
-          "Error al obtener las cotizaciones del servicio"
-        )
+          'Error al obtener las cotizaciones del servicio',
+        ),
       );
     });
   });
 
-  describe("getQuotationsByStatus", () => {
+  describe('getQuotationsByStatus', () => {
     const mockQuotations = [mockQuotation];
 
-    it("should return paginated quotations for PENDING status", async () => {
+    it('should return paginated quotations for PENDING status', async () => {
       mockPrismaService.quotation.count.mockResolvedValue(1);
       mockPrismaService.quotation.findMany.mockResolvedValue(mockQuotations);
 
       const result = await service.getQuotationsByStatus(
         QuotationStatus.PENDING,
         1,
-        10
+        10,
       );
 
       expect(mockPrismaService.quotation.count).toHaveBeenCalledWith({
@@ -288,13 +288,13 @@ describe("QuotationsService", () => {
       expect(result.nodes).toHaveLength(1);
     });
 
-    it("should return paginated quotations for ACCEPTED status", async () => {
+    it('should return paginated quotations for ACCEPTED status', async () => {
       const acceptedQuotations = [
-        { ...mockQuotation, status: "ACCEPTED", acceptedAt: new Date() },
+        { ...mockQuotation, status: 'ACCEPTED', acceptedAt: new Date() },
       ];
       mockPrismaService.quotation.count.mockResolvedValue(1);
       mockPrismaService.quotation.findMany.mockResolvedValue(
-        acceptedQuotations
+        acceptedQuotations,
       );
 
       await service.getQuotationsByStatus(QuotationStatus.ACCEPTED, 1, 10);
@@ -304,34 +304,34 @@ describe("QuotationsService", () => {
       });
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.quotation.count.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(
-        service.getQuotationsByStatus(QuotationStatus.PENDING, 1, 10)
+        service.getQuotationsByStatus(QuotationStatus.PENDING, 1, 10),
       ).rejects.toThrow(
-        new InternalServerError("Error al obtener las cotizaciones por estado")
+        new InternalServerError('Error al obtener las cotizaciones por estado'),
       );
     });
   });
 
-  describe("addQuotation", () => {
+  describe('addQuotation', () => {
     const input: AddQuotationInput = {
       serviceId: 1,
-      clientId: "client-123",
-      providerId: "provider-456",
-      title: "New Quotation",
-      description: "New quotation description",
+      clientId: 'client-123',
+      providerId: 'provider-456',
+      title: 'New Quotation',
+      description: 'New quotation description',
       estimatedPrice: 600,
       estimatedDuration: 150,
-      clientNotes: "New client notes",
-      attachments: ["file1.pdf", "file2.pdf"],
-      expiresAt: new Date("2025-12-31"),
+      clientNotes: 'New client notes',
+      attachments: ['file1.pdf', 'file2.pdf'],
+      expiresAt: new Date('2025-12-31'),
     };
 
-    it("should create a new quotation successfully", async () => {
+    it('should create a new quotation successfully', async () => {
       const createdQuotation = {
         ...mockQuotation,
         ...input,
@@ -361,12 +361,12 @@ describe("QuotationsService", () => {
       });
       expect(result).toEqual({
         ...createdQuotation,
-        client: { id: "client-123" },
-        provider: { id: "provider-456" },
+        client: { id: 'client-123' },
+        provider: { id: 'provider-456' },
       });
     });
 
-    it("should create a quotation with default empty attachments", async () => {
+    it('should create a quotation with default empty attachments', async () => {
       const inputWithoutAttachments = { ...input };
       delete inputWithoutAttachments.attachments;
 
@@ -385,31 +385,31 @@ describe("QuotationsService", () => {
           data: expect.objectContaining({
             attachments: [],
           }),
-        })
+        }),
       );
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.quotation.create.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(service.addQuotation(input)).rejects.toThrow(
-        new InternalServerError("Error al crear la cotización")
+        new InternalServerError('Error al crear la cotización'),
       );
     });
   });
 
-  describe("updateQuotation", () => {
+  describe('updateQuotation', () => {
     const input: UpdateQuotationInput = {
-      id: "1",
+      id: '1',
       estimatedPrice: 700,
       finalPrice: 650,
       status: QuotationStatus.ACCEPTED,
-      providerNotes: "Updated provider notes",
+      providerNotes: 'Updated provider notes',
     };
 
-    it("should update a quotation successfully", async () => {
+    it('should update a quotation successfully', async () => {
       const updatedQuotation = {
         ...mockQuotation,
         ...input,
@@ -434,14 +434,14 @@ describe("QuotationsService", () => {
       });
       expect(result).toEqual({
         ...updatedQuotation,
-        client: { id: "client-123" },
-        provider: { id: "provider-456" },
+        client: { id: 'client-123' },
+        provider: { id: 'provider-456' },
       });
     });
 
-    it("should update only provided fields", async () => {
+    it('should update only provided fields', async () => {
       const partialInput: UpdateQuotationInput = {
-        id: "1",
+        id: '1',
         finalPrice: 550,
       };
 
@@ -461,9 +461,9 @@ describe("QuotationsService", () => {
       expect(callData.status).toBeUndefined();
     });
 
-    it("should handle zero values for prices", async () => {
+    it('should handle zero values for prices', async () => {
       const zeroInput: UpdateQuotationInput = {
-        id: "1",
+        id: '1',
         estimatedPrice: 0,
         finalPrice: 0,
       };
@@ -484,22 +484,22 @@ describe("QuotationsService", () => {
       expect(callData.finalPrice).toBe(0);
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.quotation.update.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(service.updateQuotation(input)).rejects.toThrow(
-        new InternalServerError("Error al actualizar la cotización")
+        new InternalServerError('Error al actualizar la cotización'),
       );
     });
   });
 
-  describe("acceptQuotation", () => {
-    it("should accept a quotation successfully", async () => {
+  describe('acceptQuotation', () => {
+    it('should accept a quotation successfully', async () => {
       const acceptedQuotation = {
         ...mockQuotation,
-        status: "ACCEPTED",
+        status: 'ACCEPTED',
         acceptedAt: new Date(),
         service: mockService,
       };
@@ -511,57 +511,57 @@ describe("QuotationsService", () => {
       expect(mockPrismaService.quotation.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: {
-          status: "ACCEPTED",
+          status: 'ACCEPTED',
           acceptedAt: expect.any(Date),
           updatedAt: expect.any(Date),
         },
         select: expect.any(Object),
       });
-      expect(result.status).toBe("ACCEPTED");
+      expect(result.status).toBe('ACCEPTED');
       expect(result.acceptedAt).toBeDefined();
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.quotation.update.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(service.acceptQuotation(1)).rejects.toThrow(
-        new InternalServerError("Error al aceptar la cotización")
+        new InternalServerError('Error al aceptar la cotización'),
       );
     });
   });
 
-  describe("declineQuotation", () => {
-    it("should decline a quotation with reason", async () => {
+  describe('declineQuotation', () => {
+    it('should decline a quotation with reason', async () => {
       const declinedQuotation = {
         ...mockQuotation,
-        status: "DECLINED",
-        providerNotes: "Not available",
+        status: 'DECLINED',
+        providerNotes: 'Not available',
         service: mockService,
       };
 
       mockPrismaService.quotation.update.mockResolvedValue(declinedQuotation);
 
-      const result = await service.declineQuotation(1, "Not available");
+      const result = await service.declineQuotation(1, 'Not available');
 
       expect(mockPrismaService.quotation.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: {
-          status: "DECLINED",
-          providerNotes: "Not available",
+          status: 'DECLINED',
+          providerNotes: 'Not available',
           updatedAt: expect.any(Date),
         },
         select: expect.any(Object),
       });
-      expect(result.status).toBe("DECLINED");
-      expect(result.providerNotes).toBe("Not available");
+      expect(result.status).toBe('DECLINED');
+      expect(result.providerNotes).toBe('Not available');
     });
 
-    it("should decline a quotation without reason", async () => {
+    it('should decline a quotation without reason', async () => {
       const declinedQuotation = {
         ...mockQuotation,
-        status: "DECLINED",
+        status: 'DECLINED',
         service: mockService,
       };
 
@@ -572,7 +572,7 @@ describe("QuotationsService", () => {
       expect(mockPrismaService.quotation.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: {
-          status: "DECLINED",
+          status: 'DECLINED',
           providerNotes: undefined,
           updatedAt: expect.any(Date),
         },
@@ -580,22 +580,22 @@ describe("QuotationsService", () => {
       });
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.quotation.update.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
-      await expect(service.declineQuotation(1, "reason")).rejects.toThrow(
-        new InternalServerError("Error al rechazar la cotización")
+      await expect(service.declineQuotation(1, 'reason')).rejects.toThrow(
+        new InternalServerError('Error al rechazar la cotización'),
       );
     });
   });
 
-  describe("completeQuotation", () => {
-    it("should complete a quotation successfully", async () => {
+  describe('completeQuotation', () => {
+    it('should complete a quotation successfully', async () => {
       const completedQuotation = {
         ...mockQuotation,
-        status: "COMPLETED",
+        status: 'COMPLETED',
         completedAt: new Date(),
         service: mockService,
       };
@@ -607,57 +607,57 @@ describe("QuotationsService", () => {
       expect(mockPrismaService.quotation.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: {
-          status: "COMPLETED",
+          status: 'COMPLETED',
           completedAt: expect.any(Date),
           updatedAt: expect.any(Date),
         },
         select: expect.any(Object),
       });
-      expect(result.status).toBe("COMPLETED");
+      expect(result.status).toBe('COMPLETED');
       expect(result.completedAt).toBeDefined();
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.quotation.update.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(service.completeQuotation(1)).rejects.toThrow(
-        new InternalServerError("Error al completar la cotización")
+        new InternalServerError('Error al completar la cotización'),
       );
     });
   });
 
-  describe("cancelQuotation", () => {
-    it("should cancel a quotation with reason", async () => {
+  describe('cancelQuotation', () => {
+    it('should cancel a quotation with reason', async () => {
       const cancelledQuotation = {
         ...mockQuotation,
-        status: "CANCELLED",
-        providerNotes: "Client request",
+        status: 'CANCELLED',
+        providerNotes: 'Client request',
         service: mockService,
       };
 
       mockPrismaService.quotation.update.mockResolvedValue(cancelledQuotation);
 
-      const result = await service.cancelQuotation(1, "Client request");
+      const result = await service.cancelQuotation(1, 'Client request');
 
       expect(mockPrismaService.quotation.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: {
-          status: "CANCELLED",
-          providerNotes: "Client request",
+          status: 'CANCELLED',
+          providerNotes: 'Client request',
           updatedAt: expect.any(Date),
         },
         select: expect.any(Object),
       });
-      expect(result.status).toBe("CANCELLED");
-      expect(result.providerNotes).toBe("Client request");
+      expect(result.status).toBe('CANCELLED');
+      expect(result.providerNotes).toBe('Client request');
     });
 
-    it("should cancel a quotation without reason", async () => {
+    it('should cancel a quotation without reason', async () => {
       const cancelledQuotation = {
         ...mockQuotation,
-        status: "CANCELLED",
+        status: 'CANCELLED',
         service: mockService,
       };
 
@@ -668,7 +668,7 @@ describe("QuotationsService", () => {
       expect(mockPrismaService.quotation.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: {
-          status: "CANCELLED",
+          status: 'CANCELLED',
           providerNotes: undefined,
           updatedAt: expect.any(Date),
         },
@@ -676,19 +676,19 @@ describe("QuotationsService", () => {
       });
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.quotation.update.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
-      await expect(service.cancelQuotation(1, "reason")).rejects.toThrow(
-        new InternalServerError("Error al cancelar la cotización")
+      await expect(service.cancelQuotation(1, 'reason')).rejects.toThrow(
+        new InternalServerError('Error al cancelar la cotización'),
       );
     });
   });
 
-  describe("deleteQuotation", () => {
-    it("should delete a quotation successfully and return true", async () => {
+  describe('deleteQuotation', () => {
+    it('should delete a quotation successfully and return true', async () => {
       mockPrismaService.quotation.delete.mockResolvedValue(mockQuotation);
 
       const result = await service.deleteQuotation(1);
@@ -699,9 +699,9 @@ describe("QuotationsService", () => {
       expect(result).toBe(true);
     });
 
-    it("should return false on database error", async () => {
+    it('should return false on database error', async () => {
       mockPrismaService.quotation.delete.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       const result = await service.deleteQuotation(1);
@@ -709,9 +709,9 @@ describe("QuotationsService", () => {
       expect(result).toBe(false);
     });
 
-    it("should return false when quotation does not exist", async () => {
+    it('should return false when quotation does not exist', async () => {
       mockPrismaService.quotation.delete.mockRejectedValue(
-        new Error("Record not found")
+        new Error('Record not found'),
       );
 
       const result = await service.deleteQuotation(999);

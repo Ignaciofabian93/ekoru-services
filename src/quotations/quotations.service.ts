@@ -110,7 +110,9 @@ export class QuotationsService {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
 
-      const count = await this.prisma.quotation.count({ where: { providerId } });
+      const count = await this.prisma.quotation.count({
+        where: { providerId },
+      });
       const quotations = await this.prisma.quotation.findMany({
         where: { providerId },
         skip,
@@ -191,10 +193,7 @@ export class QuotationsService {
 
       return createPaginatedResponse(mappedQuotations, count, page, pageSize);
     } catch (error) {
-      this.logger.error(
-        'Error al obtener las cotizaciones por estado:',
-        error,
-      );
+      this.logger.error('Error al obtener las cotizaciones por estado:', error);
       throw new InternalServerError(
         'Error al obtener las cotizaciones por estado',
       );
@@ -268,7 +267,9 @@ export class QuotationsService {
           ...(input.estimatedPrice !== undefined && {
             estimatedPrice: input.estimatedPrice,
           }),
-          ...(input.finalPrice !== undefined && { finalPrice: input.finalPrice }),
+          ...(input.finalPrice !== undefined && {
+            finalPrice: input.finalPrice,
+          }),
           ...(input.estimatedDuration !== undefined && {
             estimatedDuration: input.estimatedDuration,
           }),

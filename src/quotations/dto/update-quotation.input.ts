@@ -1,19 +1,22 @@
-import { InputType, Field, ID, Int, Float } from "@nestjs/graphql";
+import { InputType, Field, ID, Int, Float } from '@nestjs/graphql';
 import {
   IsString,
   IsOptional,
   IsNumber,
+  IsInt,
   IsArray,
   IsDate,
   IsBoolean,
+  IsEnum,
   IsJSON,
-} from "class-validator";
-import { GraphQLJSON } from "graphql-scalars";
-import { QuotationStatus } from "../../graphql/enums/index.js";
+} from 'class-validator';
+import { GraphQLJSON } from 'graphql-scalars';
+import { QuotationStatus } from '../../graphql/enums/index.js';
 
 @InputType()
 export class UpdateQuotationInput {
   @Field(() => ID)
+  @IsString()
   id: string;
 
   @Field(() => Float, { nullable: true })
@@ -28,11 +31,12 @@ export class UpdateQuotationInput {
 
   @Field(() => Int, { nullable: true })
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   estimatedDuration?: number;
 
   @Field(() => QuotationStatus, { nullable: true })
   @IsOptional()
+  @IsEnum(QuotationStatus)
   status?: QuotationStatus;
 
   @Field(() => String, { nullable: true })

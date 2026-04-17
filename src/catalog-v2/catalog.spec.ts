@@ -1,11 +1,10 @@
-import { Test, TestingModule } from "@nestjs/testing";
-import { ServiceCatalogService } from "./catalog.service";
-import { PrismaService } from "../prisma/prisma.service";
-import { NotFoundError, InternalServerError } from "../common/exceptions/index";
+import { Test, TestingModule } from '@nestjs/testing';
+import { ServiceCatalogService } from './catalog.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { NotFoundError, InternalServerError } from '../common/exceptions/index';
 
-describe("ServiceCatalogService", () => {
+describe('ServiceCatalogService', () => {
   let service: ServiceCatalogService;
-  let prismaService: PrismaService;
 
   const mockPrismaService = {
     serviceCategory: {
@@ -31,42 +30,41 @@ describe("ServiceCatalogService", () => {
     }).compile();
 
     service = module.get<ServiceCatalogService>(ServiceCatalogService);
-    prismaService = module.get<PrismaService>(PrismaService);
 
     // Clear all mocks before each test
     jest.clearAllMocks();
   });
 
-  it("should be defined", () => {
+  it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
-  describe("getServiceCatalog", () => {
+  describe('getServiceCatalog', () => {
     const mockCategories = [
       {
         id: 1,
-        category: "Categoría 1",
-        href: "/categoria-1",
+        category: 'Categoría 1',
+        href: '/categoria-1',
         subcategories: [
           {
             id: 1,
-            subCategory: "Subcategoría 1",
+            subCategory: 'Subcategoría 1',
             serviceCategoryId: 1,
-            href: "/subcategoria-1",
+            href: '/subcategoria-1',
           },
         ],
       },
       {
         id: 2,
-        category: "Categoría 2",
-        href: "/categoria-2",
+        category: 'Categoría 2',
+        href: '/categoria-2',
         subcategories: [],
       },
     ];
 
-    it("should return service catalog with categories and subcategories", async () => {
+    it('should return service catalog with categories and subcategories', async () => {
       mockPrismaService.serviceCategory.findMany.mockResolvedValue(
-        mockCategories
+        mockCategories,
       );
 
       const result = await service.getServiceCatalog();
@@ -87,50 +85,50 @@ describe("ServiceCatalogService", () => {
           },
         },
         orderBy: {
-          category: "asc",
+          category: 'asc',
         },
       });
     });
 
-    it("should throw NotFoundError when no categories are found", async () => {
+    it('should throw NotFoundError when no categories are found', async () => {
       mockPrismaService.serviceCategory.findMany.mockResolvedValue([]);
 
       await expect(service.getServiceCatalog()).rejects.toThrow(
-        new NotFoundError("No se encontraron categorías de servicios")
+        new NotFoundError('No se encontraron categorías de servicios'),
       );
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.serviceCategory.findMany.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(service.getServiceCatalog()).rejects.toThrow(
-        new InternalServerError("Error al obtener el catálogo de servicios")
+        new InternalServerError('Error al obtener el catálogo de servicios'),
       );
     });
   });
 
-  describe("getServiceCategories", () => {
+  describe('getServiceCategories', () => {
     const mockCategories = [
       {
         id: 1,
-        category: "Categoría 1",
-        href: "/categoria-1",
+        category: 'Categoría 1',
+        href: '/categoria-1',
         subcategories: [
           {
             id: 1,
-            subCategory: "Subcategoría 1",
+            subCategory: 'Subcategoría 1',
             serviceCategoryId: 1,
-            href: "/subcategoria-1",
+            href: '/subcategoria-1',
           },
         ],
       },
     ];
 
-    it("should return all service categories", async () => {
+    it('should return all service categories', async () => {
       mockPrismaService.serviceCategory.findMany.mockResolvedValue(
-        mockCategories
+        mockCategories,
       );
 
       const result = await service.getServiceCategories();
@@ -153,43 +151,43 @@ describe("ServiceCatalogService", () => {
       });
     });
 
-    it("should throw NotFoundError when no categories are found", async () => {
+    it('should throw NotFoundError when no categories are found', async () => {
       mockPrismaService.serviceCategory.findMany.mockResolvedValue([]);
 
       await expect(service.getServiceCategories()).rejects.toThrow(
-        new NotFoundError("No se encontraron categorías de servicios")
+        new NotFoundError('No se encontraron categorías de servicios'),
       );
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.serviceCategory.findMany.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(service.getServiceCategories()).rejects.toThrow(
-        new InternalServerError("Error al obtener las categorías de servicios")
+        new InternalServerError('Error al obtener las categorías de servicios'),
       );
     });
   });
 
-  describe("getServiceCategory", () => {
+  describe('getServiceCategory', () => {
     const mockCategory = {
       id: 1,
-      category: "Categoría 1",
-      href: "/categoria-1",
+      category: 'Categoría 1',
+      href: '/categoria-1',
       subcategories: [
         {
           id: 1,
-          subCategory: "Subcategoría 1",
+          subCategory: 'Subcategoría 1',
           serviceCategoryId: 1,
-          href: "/subcategoria-1",
+          href: '/subcategoria-1',
         },
       ],
     };
 
-    it("should return a service category by id", async () => {
+    it('should return a service category by id', async () => {
       mockPrismaService.serviceCategory.findUnique.mockResolvedValue(
-        mockCategory
+        mockCategory,
       );
 
       const result = await service.getServiceCategory(1);
@@ -211,55 +209,55 @@ describe("ServiceCatalogService", () => {
               },
             },
           },
-        }
+        },
       );
     });
 
-    it("should throw NotFoundError when category is not found", async () => {
+    it('should throw NotFoundError when category is not found', async () => {
       mockPrismaService.serviceCategory.findUnique.mockResolvedValue(null);
 
       await expect(service.getServiceCategory(999)).rejects.toThrow(
-        new NotFoundError("Categoría de servicio no encontrada")
+        new NotFoundError('Categoría de servicio no encontrada'),
       );
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.serviceCategory.findUnique.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(service.getServiceCategory(1)).rejects.toThrow(
-        new InternalServerError("Error al obtener la categoría de servicio")
+        new InternalServerError('Error al obtener la categoría de servicio'),
       );
     });
   });
 
-  describe("getServiceSubCategories", () => {
+  describe('getServiceSubCategories', () => {
     const mockSubcategories = [
       {
         id: 1,
-        subCategory: "Subcategoría 1",
+        subCategory: 'Subcategoría 1',
         serviceCategoryId: 1,
-        href: "/subcategoria-1",
+        href: '/subcategoria-1',
         _count: {
           services: 5,
         },
       },
       {
         id: 2,
-        subCategory: "Subcategoría 2",
+        subCategory: 'Subcategoría 2',
         serviceCategoryId: 1,
-        href: "/subcategoria-2",
+        href: '/subcategoria-2',
         _count: {
           services: 3,
         },
       },
     ];
 
-    it("should return paginated subcategories with default pagination", async () => {
+    it('should return paginated subcategories with default pagination', async () => {
       mockPrismaService.serviceSubCategory.count.mockResolvedValue(2);
       mockPrismaService.serviceSubCategory.findMany.mockResolvedValue(
-        mockSubcategories
+        mockSubcategories,
       );
 
       const result = await service.getServiceSubCategories(1);
@@ -268,7 +266,7 @@ describe("ServiceCatalogService", () => {
         where: { serviceCategoryId: 1 },
       });
       expect(
-        mockPrismaService.serviceSubCategory.findMany
+        mockPrismaService.serviceSubCategory.findMany,
       ).toHaveBeenCalledWith({
         where: { serviceCategoryId: 1 },
         skip: 0,
@@ -291,16 +289,16 @@ describe("ServiceCatalogService", () => {
       expect(result.pageInfo.totalCount).toBe(2);
     });
 
-    it("should return paginated subcategories with custom pagination", async () => {
+    it('should return paginated subcategories with custom pagination', async () => {
       mockPrismaService.serviceSubCategory.count.mockResolvedValue(15);
       mockPrismaService.serviceSubCategory.findMany.mockResolvedValue(
-        mockSubcategories
+        mockSubcategories,
       );
 
       const result = await service.getServiceSubCategories(1, 2, 5);
 
       expect(
-        mockPrismaService.serviceSubCategory.findMany
+        mockPrismaService.serviceSubCategory.findMany,
       ).toHaveBeenCalledWith({
         where: { serviceCategoryId: 1 },
         skip: 5,
@@ -321,7 +319,7 @@ describe("ServiceCatalogService", () => {
       expect(result.pageInfo.pageSize).toBe(5);
     });
 
-    it("should return empty edges when no subcategories are found", async () => {
+    it('should return empty edges when no subcategories are found', async () => {
       mockPrismaService.serviceSubCategory.count.mockResolvedValue(0);
       mockPrismaService.serviceSubCategory.findMany.mockResolvedValue([]);
 
@@ -331,37 +329,37 @@ describe("ServiceCatalogService", () => {
       expect(result.pageInfo.totalCount).toBe(0);
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.serviceSubCategory.count.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(service.getServiceSubCategories(1)).rejects.toThrow(
         new InternalServerError(
-          "Error al obtener las subcategorías de servicio"
-        )
+          'Error al obtener las subcategorías de servicio',
+        ),
       );
     });
   });
 
-  describe("getServiceSubCategory", () => {
+  describe('getServiceSubCategory', () => {
     const mockSubcategory = {
       id: 1,
-      subCategory: "Subcategoría 1",
+      subCategory: 'Subcategoría 1',
       serviceCategoryId: 1,
-      href: "/subcategoria-1",
+      href: '/subcategoria-1',
       serviceCategory: {
         id: 1,
-        category: "Categoría 1",
+        category: 'Categoría 1',
       },
       _count: {
         services: 5,
       },
     };
 
-    it("should return a subcategory by id with service count", async () => {
+    it('should return a subcategory by id with service count', async () => {
       mockPrismaService.serviceSubCategory.findUnique.mockResolvedValue(
-        mockSubcategory
+        mockSubcategory,
       );
 
       const result = await service.getServiceSubCategory(1);
@@ -371,7 +369,7 @@ describe("ServiceCatalogService", () => {
         serviceCount: 5,
       });
       expect(
-        mockPrismaService.serviceSubCategory.findUnique
+        mockPrismaService.serviceSubCategory.findUnique,
       ).toHaveBeenCalledWith({
         where: { id: 1 },
         select: {
@@ -394,21 +392,21 @@ describe("ServiceCatalogService", () => {
       });
     });
 
-    it("should throw NotFoundError when subcategory is not found", async () => {
+    it('should throw NotFoundError when subcategory is not found', async () => {
       mockPrismaService.serviceSubCategory.findUnique.mockResolvedValue(null);
 
       await expect(service.getServiceSubCategory(999)).rejects.toThrow(
-        new NotFoundError("Subcategoría de servicio no encontrada")
+        new NotFoundError('Subcategoría de servicio no encontrada'),
       );
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.serviceSubCategory.findUnique.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(service.getServiceSubCategory(1)).rejects.toThrow(
-        new InternalServerError("Error al obtener la subcategoría de servicio")
+        new InternalServerError('Error al obtener la subcategoría de servicio'),
       );
     });
   });

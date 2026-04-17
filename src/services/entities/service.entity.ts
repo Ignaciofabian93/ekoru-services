@@ -1,8 +1,8 @@
-import { ObjectType, Field, ID, Int, Float, Directive } from "@nestjs/graphql";
-import { GraphQLJSON } from "graphql-scalars";
-import { ServicePricing } from "../../graphql/enums/index.js";
-import { ServiceSubCategory } from "../../catalog/entities/index.js";
-import { Seller } from "./seller.entity.js";
+import { ObjectType, Field, ID, Int, Float, Directive } from '@nestjs/graphql';
+import { GraphQLJSON } from 'graphql-scalars';
+import { ServicePricing } from '../../graphql/enums/index.js';
+import { ServiceSubCategory } from '../../catalog-v2/entities/index.js';
+import { Seller } from './seller.entity.js';
 
 @ObjectType()
 @Directive('@key(fields: "id")')

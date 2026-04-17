@@ -1,18 +1,21 @@
-import { InputType, Field, ID, Int, Float } from "@nestjs/graphql";
+import { InputType, Field, ID, Int, Float } from '@nestjs/graphql';
 import {
   IsString,
   IsOptional,
   IsNumber,
+  IsInt,
   IsArray,
   IsBoolean,
+  IsEnum,
   IsJSON,
-} from "class-validator";
-import { GraphQLJSON } from "graphql-scalars";
-import { ServicePricing } from "../../graphql/enums/index.js";
+} from 'class-validator';
+import { GraphQLJSON } from 'graphql-scalars';
+import { ServicePricing } from '../../graphql/enums/index.js';
 
 @InputType()
 export class UpdateServiceInput {
   @Field(() => ID)
+  @IsString()
   id: string;
 
   @Field(() => String, { nullable: true })
@@ -27,11 +30,12 @@ export class UpdateServiceInput {
 
   @Field(() => Int, { nullable: true })
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   subcategoryId?: number;
 
   @Field(() => ServicePricing, { nullable: true })
   @IsOptional()
+  @IsEnum(ServicePricing)
   pricingType?: ServicePricing;
 
   @Field(() => Float, { nullable: true })
@@ -46,17 +50,19 @@ export class UpdateServiceInput {
 
   @Field(() => Int, { nullable: true })
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   duration?: number;
 
   @Field(() => [String], { nullable: true })
   @IsOptional()
   @IsArray()
+  @IsString({ each: true })
   images?: string[];
 
   @Field(() => [String], { nullable: true })
   @IsOptional()
   @IsArray()
+  @IsString({ each: true })
   tags?: string[];
 
   @Field(() => Boolean, { nullable: true })
@@ -77,18 +83,18 @@ export class UpdateServiceInput {
 
   @Field(() => Int, { nullable: true })
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   maxConcurrentBookings?: number;
 
   @Field(() => Int, { nullable: true })
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   advanceBookingDays?: number;
 
   // Location
   @Field(() => Int, { nullable: true })
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   serviceRadius?: number;
 
   @Field(() => GraphQLJSON, { nullable: true })

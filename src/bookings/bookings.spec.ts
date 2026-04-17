@@ -1,16 +1,15 @@
-import { Test, TestingModule } from "@nestjs/testing";
-import { BookingsService } from "./bookings.service";
-import { PrismaService } from "../prisma/prisma.service";
+import { Test, TestingModule } from '@nestjs/testing';
+import { BookingsService } from './bookings.service';
+import { PrismaService } from '../prisma/prisma.service';
 import {
   NotFoundError,
   BadRequestError,
   InternalServerError,
-} from "../common/exceptions/index";
-import { AddServiceBookingInput, UpdateServiceBookingInput } from "./dto/index";
+} from '../common/exceptions/index';
+import { AddServiceBookingInput, UpdateServiceBookingInput } from './dto/index';
 
-describe("BookingsService", () => {
+describe('BookingsService', () => {
   let service: BookingsService;
-  let prismaService: PrismaService;
 
   const mockPrismaService = {
     serviceBooking: {
@@ -28,27 +27,27 @@ describe("BookingsService", () => {
   const mockBooking = {
     id: 1,
     serviceId: 1,
-    clientId: "client-123",
-    providerId: "provider-456",
-    scheduledDate: new Date("2025-12-25"),
-    scheduledTimeSlot: "10:00-11:00",
-    serviceLocation: { address: "123 Main St" },
+    clientId: 'client-123',
+    providerId: 'provider-456',
+    scheduledDate: new Date('2025-12-25'),
+    scheduledTimeSlot: '10:00-11:00',
+    serviceLocation: { address: '123 Main St' },
     agreedPrice: 100,
-    status: "PENDING",
-    paymentStatus: "PENDING",
-    clientNotes: "Test notes",
+    status: 'PENDING',
+    paymentStatus: 'PENDING',
+    clientNotes: 'Test notes',
     providerNotes: null,
     cancellationReason: null,
     cancelledBy: null,
     completedAt: null,
-    createdAt: new Date("2025-12-23"),
-    updatedAt: new Date("2025-12-23"),
+    createdAt: new Date('2025-12-23'),
+    updatedAt: new Date('2025-12-23'),
   };
 
   const mockService = {
     id: 1,
     isActive: true,
-    title: "Test Service",
+    title: 'Test Service',
   };
 
   beforeEach(async () => {
@@ -63,26 +62,25 @@ describe("BookingsService", () => {
     }).compile();
 
     service = module.get<BookingsService>(BookingsService);
-    prismaService = module.get<PrismaService>(PrismaService);
 
     jest.clearAllMocks();
   });
 
-  it("should be defined", () => {
+  it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
-  describe("getServiceBooking", () => {
-    it("should return a booking with related data", async () => {
+  describe('getServiceBooking', () => {
+    it('should return a booking with related data', async () => {
       const mockBookingWithRelations = {
         ...mockBooking,
         service: mockService,
-        client: { id: "client-123", name: "John Doe" },
-        provider: { id: "provider-456", name: "Jane Smith" },
+        client: { id: 'client-123', name: 'John Doe' },
+        provider: { id: 'provider-456', name: 'Jane Smith' },
       };
 
       mockPrismaService.serviceBooking.findUnique.mockResolvedValue(
-        mockBookingWithRelations
+        mockBookingWithRelations,
       );
 
       const result = await service.getServiceBooking(1);
@@ -98,29 +96,29 @@ describe("BookingsService", () => {
       });
     });
 
-    it("should throw NotFoundError when booking is not found", async () => {
+    it('should throw NotFoundError when booking is not found', async () => {
       mockPrismaService.serviceBooking.findUnique.mockResolvedValue(null);
 
       await expect(service.getServiceBooking(999)).rejects.toThrow(
-        new NotFoundError("Reserva no encontrada")
+        new NotFoundError('Reserva no encontrada'),
       );
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.serviceBooking.findUnique.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(service.getServiceBooking(1)).rejects.toThrow(
-        new InternalServerError("Error al obtener la reserva")
+        new InternalServerError('Error al obtener la reserva'),
       );
     });
   });
 
-  describe("getServiceBookings", () => {
+  describe('getServiceBookings', () => {
     const mockBookings = [mockBooking];
 
-    it("should return paginated bookings without status filter", async () => {
+    it('should return paginated bookings without status filter', async () => {
       mockPrismaService.serviceBooking.count.mockResolvedValue(1);
       mockPrismaService.serviceBooking.findMany.mockResolvedValue(mockBookings);
 
@@ -133,164 +131,164 @@ describe("BookingsService", () => {
         where: {},
         skip: 0,
         take: 10,
-        orderBy: { scheduledDate: "asc" },
+        orderBy: { scheduledDate: 'asc' },
       });
       expect(result.nodes).toHaveLength(1);
       expect(result.pageInfo.totalCount).toBe(1);
     });
 
-    it("should return paginated bookings with status filter", async () => {
+    it('should return paginated bookings with status filter', async () => {
       mockPrismaService.serviceBooking.count.mockResolvedValue(1);
       mockPrismaService.serviceBooking.findMany.mockResolvedValue(mockBookings);
 
-      const result = await service.getServiceBookings(1, 10, "PENDING");
+      await service.getServiceBookings(1, 10, 'PENDING');
 
       expect(mockPrismaService.serviceBooking.count).toHaveBeenCalledWith({
-        where: { status: "PENDING" },
+        where: { status: 'PENDING' },
       });
       expect(mockPrismaService.serviceBooking.findMany).toHaveBeenCalledWith({
-        where: { status: "PENDING" },
+        where: { status: 'PENDING' },
         skip: 0,
         take: 10,
-        orderBy: { scheduledDate: "asc" },
+        orderBy: { scheduledDate: 'asc' },
       });
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.serviceBooking.count.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(service.getServiceBookings(1, 10)).rejects.toThrow(
-        new InternalServerError("Error al obtener las reservas")
+        new InternalServerError('Error al obtener las reservas'),
       );
     });
   });
 
-  describe("getServiceBookingsByClient", () => {
+  describe('getServiceBookingsByClient', () => {
     const mockBookings = [mockBooking];
 
-    it("should return paginated bookings for a client without status filter", async () => {
+    it('should return paginated bookings for a client without status filter', async () => {
       mockPrismaService.serviceBooking.count.mockResolvedValue(1);
       mockPrismaService.serviceBooking.findMany.mockResolvedValue(mockBookings);
 
       const result = await service.getServiceBookingsByClient(
-        "client-123",
+        'client-123',
         1,
-        10
+        10,
       );
 
       expect(mockPrismaService.serviceBooking.count).toHaveBeenCalledWith({
-        where: { clientId: "client-123" },
+        where: { clientId: 'client-123' },
       });
       expect(mockPrismaService.serviceBooking.findMany).toHaveBeenCalledWith({
-        where: { clientId: "client-123" },
+        where: { clientId: 'client-123' },
         skip: 0,
         take: 10,
-        orderBy: { scheduledDate: "asc" },
+        orderBy: { scheduledDate: 'asc' },
       });
       expect(result.nodes).toHaveLength(1);
     });
 
-    it("should return paginated bookings for a client with status filter", async () => {
+    it('should return paginated bookings for a client with status filter', async () => {
       mockPrismaService.serviceBooking.count.mockResolvedValue(1);
       mockPrismaService.serviceBooking.findMany.mockResolvedValue(mockBookings);
 
-      const result = await service.getServiceBookingsByClient(
-        "client-123",
+      await service.getServiceBookingsByClient(
+        'client-123',
         1,
         10,
-        "CONFIRMED"
+        'CONFIRMED',
       );
 
       expect(mockPrismaService.serviceBooking.count).toHaveBeenCalledWith({
-        where: { clientId: "client-123", status: "CONFIRMED" },
+        where: { clientId: 'client-123', status: 'CONFIRMED' },
       });
       expect(mockPrismaService.serviceBooking.findMany).toHaveBeenCalledWith({
-        where: { clientId: "client-123", status: "CONFIRMED" },
+        where: { clientId: 'client-123', status: 'CONFIRMED' },
         skip: 0,
         take: 10,
-        orderBy: { scheduledDate: "asc" },
+        orderBy: { scheduledDate: 'asc' },
       });
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.serviceBooking.count.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(
-        service.getServiceBookingsByClient("client-123", 1, 10)
+        service.getServiceBookingsByClient('client-123', 1, 10),
       ).rejects.toThrow(
-        new InternalServerError("Error al obtener las reservas del cliente")
+        new InternalServerError('Error al obtener las reservas del cliente'),
       );
     });
   });
 
-  describe("getServiceBookingsByProvider", () => {
+  describe('getServiceBookingsByProvider', () => {
     const mockBookings = [mockBooking];
 
-    it("should return paginated bookings for a provider without status filter", async () => {
+    it('should return paginated bookings for a provider without status filter', async () => {
       mockPrismaService.serviceBooking.count.mockResolvedValue(1);
       mockPrismaService.serviceBooking.findMany.mockResolvedValue(mockBookings);
 
       const result = await service.getServiceBookingsByProvider(
-        "provider-456",
+        'provider-456',
         1,
-        10
+        10,
       );
 
       expect(mockPrismaService.serviceBooking.count).toHaveBeenCalledWith({
-        where: { providerId: "provider-456" },
+        where: { providerId: 'provider-456' },
       });
       expect(mockPrismaService.serviceBooking.findMany).toHaveBeenCalledWith({
-        where: { providerId: "provider-456" },
+        where: { providerId: 'provider-456' },
         skip: 0,
         take: 10,
-        orderBy: { scheduledDate: "asc" },
+        orderBy: { scheduledDate: 'asc' },
       });
       expect(result.nodes).toHaveLength(1);
     });
 
-    it("should return paginated bookings for a provider with status filter", async () => {
+    it('should return paginated bookings for a provider with status filter', async () => {
       mockPrismaService.serviceBooking.count.mockResolvedValue(1);
       mockPrismaService.serviceBooking.findMany.mockResolvedValue(mockBookings);
 
-      const result = await service.getServiceBookingsByProvider(
-        "provider-456",
+      await service.getServiceBookingsByProvider(
+        'provider-456',
         1,
         10,
-        "COMPLETED"
+        'COMPLETED',
       );
 
       expect(mockPrismaService.serviceBooking.count).toHaveBeenCalledWith({
-        where: { providerId: "provider-456", status: "COMPLETED" },
+        where: { providerId: 'provider-456', status: 'COMPLETED' },
       });
       expect(mockPrismaService.serviceBooking.findMany).toHaveBeenCalledWith({
-        where: { providerId: "provider-456", status: "COMPLETED" },
+        where: { providerId: 'provider-456', status: 'COMPLETED' },
         skip: 0,
         take: 10,
-        orderBy: { scheduledDate: "asc" },
+        orderBy: { scheduledDate: 'asc' },
       });
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.serviceBooking.count.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(
-        service.getServiceBookingsByProvider("provider-456", 1, 10)
+        service.getServiceBookingsByProvider('provider-456', 1, 10),
       ).rejects.toThrow(
-        new InternalServerError("Error al obtener las reservas del proveedor")
+        new InternalServerError('Error al obtener las reservas del proveedor'),
       );
     });
   });
 
-  describe("getServiceBookingsByService", () => {
+  describe('getServiceBookingsByService', () => {
     const mockBookings = [mockBooking];
 
-    it("should return paginated bookings for a service", async () => {
+    it('should return paginated bookings for a service', async () => {
       mockPrismaService.serviceBooking.count.mockResolvedValue(1);
       mockPrismaService.serviceBooking.findMany.mockResolvedValue(mockBookings);
 
@@ -303,37 +301,37 @@ describe("BookingsService", () => {
         where: { serviceId: 1 },
         skip: 0,
         take: 10,
-        orderBy: { scheduledDate: "asc" },
+        orderBy: { scheduledDate: 'asc' },
       });
       expect(result.nodes).toHaveLength(1);
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.serviceBooking.count.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(
-        service.getServiceBookingsByService(1, 1, 10)
+        service.getServiceBookingsByService(1, 1, 10),
       ).rejects.toThrow(
-        new InternalServerError("Error al obtener las reservas del servicio")
+        new InternalServerError('Error al obtener las reservas del servicio'),
       );
     });
   });
 
-  describe("addServiceBooking", () => {
+  describe('addServiceBooking', () => {
     const input: AddServiceBookingInput = {
       serviceId: 1,
-      clientId: "client-123",
-      providerId: "provider-456",
-      scheduledDate: new Date("2025-12-25"),
-      scheduledTimeSlot: "10:00-11:00",
-      serviceLocation: { address: "123 Main St" },
+      clientId: 'client-123',
+      providerId: 'provider-456',
+      scheduledDate: new Date('2025-12-25'),
+      scheduledTimeSlot: '10:00-11:00',
+      serviceLocation: { address: '123 Main St' },
       agreedPrice: 100,
-      clientNotes: "Test notes",
+      clientNotes: 'Test notes',
     };
 
-    it("should create a new booking successfully", async () => {
+    it('should create a new booking successfully', async () => {
       mockPrismaService.service.findUnique.mockResolvedValue(mockService);
       mockPrismaService.serviceBooking.create.mockResolvedValue(mockBooking);
 
@@ -357,7 +355,7 @@ describe("BookingsService", () => {
       expect(result).toEqual(mockBooking);
     });
 
-    it("should create a booking without optional serviceLocation", async () => {
+    it('should create a booking without optional serviceLocation', async () => {
       const inputWithoutLocation = { ...input };
       delete inputWithoutLocation.serviceLocation;
 
@@ -373,48 +371,48 @@ describe("BookingsService", () => {
       });
     });
 
-    it("should throw BadRequestError when service does not exist", async () => {
+    it('should throw BadRequestError when service does not exist', async () => {
       mockPrismaService.service.findUnique.mockResolvedValue(null);
 
       await expect(service.addServiceBooking(input)).rejects.toThrow(
-        new BadRequestError("Servicio no disponible")
+        new BadRequestError('Servicio no disponible'),
       );
     });
 
-    it("should throw BadRequestError when service is not active", async () => {
+    it('should throw BadRequestError when service is not active', async () => {
       mockPrismaService.service.findUnique.mockResolvedValue({
         ...mockService,
         isActive: false,
       });
 
       await expect(service.addServiceBooking(input)).rejects.toThrow(
-        new BadRequestError("Servicio no disponible")
+        new BadRequestError('Servicio no disponible'),
       );
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.service.findUnique.mockResolvedValue(mockService);
       mockPrismaService.serviceBooking.create.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(service.addServiceBooking(input)).rejects.toThrow(
-        new InternalServerError("Error al crear la reserva")
+        new InternalServerError('Error al crear la reserva'),
       );
     });
   });
 
-  describe("updateServiceBooking", () => {
+  describe('updateServiceBooking', () => {
     const input: UpdateServiceBookingInput = {
-      id: "1",
-      scheduledDate: new Date("2025-12-26"),
-      scheduledTimeSlot: "14:00-15:00",
+      id: '1',
+      scheduledDate: new Date('2025-12-26'),
+      scheduledTimeSlot: '14:00-15:00',
       agreedPrice: 120,
-      status: "CONFIRMED",
-      providerNotes: "Provider notes",
+      status: 'CONFIRMED',
+      providerNotes: 'Provider notes',
     };
 
-    it("should update a booking successfully", async () => {
+    it('should update a booking successfully', async () => {
       const updatedBooking = { ...mockBooking, ...input, id: 1 };
       mockPrismaService.serviceBooking.update.mockResolvedValue(updatedBooking);
 
@@ -434,19 +432,19 @@ describe("BookingsService", () => {
       expect(result).toEqual(updatedBooking);
     });
 
-    it("should set completedAt when status is COMPLETED", async () => {
+    it('should set completedAt when status is COMPLETED', async () => {
       const completedInput: UpdateServiceBookingInput = {
-        id: "1",
-        status: "COMPLETED",
+        id: '1',
+        status: 'COMPLETED',
       };
       const completedBooking = {
         ...mockBooking,
-        status: "COMPLETED",
+        status: 'COMPLETED',
         completedAt: new Date(),
       };
 
       mockPrismaService.serviceBooking.update.mockResolvedValue(
-        completedBooking
+        completedBooking,
       );
 
       await service.updateServiceBooking(completedInput);
@@ -454,17 +452,17 @@ describe("BookingsService", () => {
       expect(mockPrismaService.serviceBooking.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: expect.objectContaining({
-          status: "COMPLETED",
+          status: 'COMPLETED',
           completedAt: expect.any(Date),
           updatedAt: expect.any(Date),
         }),
       });
     });
 
-    it("should update only provided fields", async () => {
+    it('should update only provided fields', async () => {
       const partialInput: UpdateServiceBookingInput = {
-        id: "1",
-        clientNotes: "Updated notes",
+        id: '1',
+        clientNotes: 'Updated notes',
       };
 
       mockPrismaService.serviceBooking.update.mockResolvedValue(mockBooking);
@@ -473,76 +471,76 @@ describe("BookingsService", () => {
 
       const callData =
         mockPrismaService.serviceBooking.update.mock.calls[0][0].data;
-      expect(callData.clientNotes).toBe("Updated notes");
+      expect(callData.clientNotes).toBe('Updated notes');
       expect(callData.scheduledDate).toBeUndefined();
       expect(callData.status).toBeUndefined();
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.serviceBooking.update.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(service.updateServiceBooking(input)).rejects.toThrow(
-        new InternalServerError("Error al actualizar la reserva")
+        new InternalServerError('Error al actualizar la reserva'),
       );
     });
   });
 
-  describe("cancelServiceBooking", () => {
-    it("should cancel a booking successfully", async () => {
+  describe('cancelServiceBooking', () => {
+    it('should cancel a booking successfully', async () => {
       const cancelledBooking = {
         ...mockBooking,
-        status: "CANCELLED",
-        cancelledBy: "client-123",
-        cancellationReason: "Changed plans",
+        status: 'CANCELLED',
+        cancelledBy: 'client-123',
+        cancellationReason: 'Changed plans',
       };
 
       mockPrismaService.serviceBooking.update.mockResolvedValue(
-        cancelledBooking
+        cancelledBooking,
       );
 
       const result = await service.cancelServiceBooking(
         1,
-        "client-123",
-        "Changed plans"
+        'client-123',
+        'Changed plans',
       );
 
       expect(mockPrismaService.serviceBooking.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: {
-          status: "CANCELLED",
-          cancelledBy: "client-123",
-          cancellationReason: "Changed plans",
+          status: 'CANCELLED',
+          cancelledBy: 'client-123',
+          cancellationReason: 'Changed plans',
           updatedAt: expect.any(Date),
         },
       });
       expect(result).toEqual(cancelledBooking);
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.serviceBooking.update.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(
-        service.cancelServiceBooking(1, "client-123", "Changed plans")
+        service.cancelServiceBooking(1, 'client-123', 'Changed plans'),
       ).rejects.toThrow(
-        new InternalServerError("Error al cancelar la reserva")
+        new InternalServerError('Error al cancelar la reserva'),
       );
     });
   });
 
-  describe("completeServiceBooking", () => {
-    it("should complete a booking successfully", async () => {
+  describe('completeServiceBooking', () => {
+    it('should complete a booking successfully', async () => {
       const completedBooking = {
         ...mockBooking,
-        status: "COMPLETED",
+        status: 'COMPLETED',
         completedAt: new Date(),
       };
 
       mockPrismaService.serviceBooking.update.mockResolvedValue(
-        completedBooking
+        completedBooking,
       );
 
       const result = await service.completeServiceBooking(1);
@@ -550,7 +548,7 @@ describe("BookingsService", () => {
       expect(mockPrismaService.serviceBooking.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: {
-          status: "COMPLETED",
+          status: 'COMPLETED',
           completedAt: expect.any(Date),
           updatedAt: expect.any(Date),
         },
@@ -558,13 +556,13 @@ describe("BookingsService", () => {
       expect(result).toEqual(completedBooking);
     });
 
-    it("should throw InternalServerError on database error", async () => {
+    it('should throw InternalServerError on database error', async () => {
       mockPrismaService.serviceBooking.update.mockRejectedValue(
-        new Error("Database error")
+        new Error('Database error'),
       );
 
       await expect(service.completeServiceBooking(1)).rejects.toThrow(
-        new InternalServerError("Error al completar la reserva")
+        new InternalServerError('Error al completar la reserva'),
       );
     });
   });
