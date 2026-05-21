@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { GqlThrottlerGuard } from './common/guards/gql-throtler.guard.js';
 import { APP_GUARD } from '@nestjs/core';
 import { GraphQLModule } from '@nestjs/graphql';
 import {
@@ -80,7 +81,7 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
     ReviewsModule,
     BookingsModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [{ provide: APP_GUARD, useClass: GqlThrottlerGuard }],
   controllers: [HealthController],
 })
 export class AppModule {}
