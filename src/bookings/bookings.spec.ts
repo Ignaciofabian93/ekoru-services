@@ -90,8 +90,6 @@ describe('BookingsService', () => {
         where: { id: 1 },
         include: {
           service: true,
-          client: true,
-          provider: true,
         },
       });
     });

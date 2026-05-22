@@ -36,15 +36,44 @@ describe('ServicesService', () => {
     updatedAt: new Date('2025-12-23'),
   };
 
+  // Raw shape returned by Prisma for getService (subCategory + href via
+  // translations, plus the nested parent category translation).
+  const mockServiceCategoryRaw = {
+    id: 1,
+    serviceCategoryId: 1,
+    translations: [
+      { subCategory: 'Test Subcategory', href: '/test-subcategory' },
+    ],
+    serviceCategory: {
+      id: 1,
+      translations: [{ category: 'Test Category' }],
+    },
+  };
+
+  // Flattened serviceCategory as returned by getService.
   const mockServiceCategory = {
     id: 1,
-    subCategory: 'Test Subcategory',
     serviceCategoryId: 1,
+    subCategory: 'Test Subcategory',
     href: '/test-subcategory',
     serviceCategory: {
       id: 1,
       category: 'Test Category',
     },
+  };
+
+  // Raw shape returned by Prisma for add/update/toggle (only subCategory).
+  const mockServiceCategoryRawBasic = {
+    id: 1,
+    serviceCategoryId: 1,
+    translations: [{ subCategory: 'Test Subcategory' }],
+  };
+
+  // Flattened serviceCategory as returned by add/update/toggle.
+  const mockServiceCategoryBasic = {
+    id: 1,
+    serviceCategoryId: 1,
+    subCategory: 'Test Subcategory',
   };
 
   const mockReviews = [
@@ -86,20 +115,19 @@ describe('ServicesService', () => {
 
   describe('getService', () => {
     it('should return a service with average rating calculated', async () => {
-      const mockServiceWithRelations = {
+      const mockServiceFromDb = {
         ...mockService,
-        serviceCategory: mockServiceCategory,
+        serviceCategory: mockServiceCategoryRaw,
         serviceReview: mockReviews,
       };
 
-      mockPrismaService.service.findUnique.mockResolvedValue(
-        mockServiceWithRelations,
-      );
+      mockPrismaService.service.findUnique.mockResolvedValue(mockServiceFromDb);
 
       const result = await service.getService(1);
 
       expect(result).toEqual({
-        ...mockServiceWithRelations,
+        ...mockService,
+        serviceCategory: mockServiceCategory,
         seller: { id: 'seller-123' },
         averageRating: 4.5,
         reviewCount: 2,
@@ -119,7 +147,7 @@ describe('ServicesService', () => {
     it('should return service with zero rating when no reviews exist', async () => {
       const mockServiceWithoutReviews = {
         ...mockService,
-        serviceCategory: mockServiceCategory,
+        serviceCategory: mockServiceCategoryRaw,
         serviceReview: [],
       };
 
@@ -399,7 +427,7 @@ describe('ServicesService', () => {
         ...mockService,
         ...input,
         id: 2,
-        serviceCategory: mockServiceCategory,
+        serviceCategory: mockServiceCategoryRawBasic,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -427,6 +455,7 @@ describe('ServicesService', () => {
       });
       expect(result).toEqual({
         ...createdService,
+        serviceCategory: mockServiceCategoryBasic,
         seller: { id: 'seller-123' },
         averageRating: 0,
         reviewCount: 0,
@@ -440,7 +469,7 @@ describe('ServicesService', () => {
       const createdService = {
         ...mockService,
         tags: [],
-        serviceCategory: mockServiceCategory,
+        serviceCategory: mockServiceCategoryRawBasic,
       };
 
       mockPrismaService.service.create.mockResolvedValue(createdService);
@@ -463,7 +492,7 @@ describe('ServicesService', () => {
       const createdService = {
         ...mockService,
         isActive: true,
-        serviceCategory: mockServiceCategory,
+        serviceCategory: mockServiceCategoryRawBasic,
       };
 
       mockPrismaService.service.create.mockResolvedValue(createdService);
@@ -504,7 +533,7 @@ describe('ServicesService', () => {
         ...mockService,
         ...input,
         id: 1,
-        serviceCategory: mockServiceCategory,
+        serviceCategory: mockServiceCategoryRawBasic,
         _count: { serviceReview: 3 },
       };
 
@@ -524,6 +553,7 @@ describe('ServicesService', () => {
       });
       expect(result).toEqual({
         ...updatedService,
+        serviceCategory: mockServiceCategoryBasic,
         seller: { id: 'seller-123' },
         averageRating: 0,
         reviewCount: 3,
@@ -539,7 +569,7 @@ describe('ServicesService', () => {
       const updatedService = {
         ...mockService,
         name: 'Updated Name Only',
-        serviceCategory: mockServiceCategory,
+        serviceCategory: mockServiceCategoryRawBasic,
         _count: { serviceReview: 0 },
       };
 
@@ -562,7 +592,7 @@ describe('ServicesService', () => {
       const updatedService = {
         ...mockService,
         basePrice: 0,
-        serviceCategory: mockServiceCategory,
+        serviceCategory: mockServiceCategoryRawBasic,
         _count: { serviceReview: 0 },
       };
 
@@ -620,7 +650,7 @@ describe('ServicesService', () => {
       const toggledService = {
         ...mockService,
         isActive: false,
-        serviceCategory: mockServiceCategory,
+        serviceCategory: mockServiceCategoryRawBasic,
         _count: { serviceReview: 2 },
       };
 
@@ -646,7 +676,7 @@ describe('ServicesService', () => {
       const toggledService = {
         ...mockService,
         isActive: true,
-        serviceCategory: mockServiceCategory,
+        serviceCategory: mockServiceCategoryRawBasic,
         _count: { serviceReview: 2 },
       };
 
