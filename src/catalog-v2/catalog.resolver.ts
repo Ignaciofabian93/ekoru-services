@@ -1,6 +1,7 @@
 import { Resolver, Query, Args, Int, ID } from '@nestjs/graphql';
 import { ServiceCatalogService } from './catalog.service.js';
 import {
+  ServiceCatalogItemEntity,
   ServiceCategory,
   ServiceSubCategory,
   ServiceSubCategoryConnection,
@@ -11,9 +12,9 @@ import { Language } from '@prisma/client';
 export class ServiceCatalogResolver {
   constructor(private readonly catalogService: ServiceCatalogService) {}
 
-  @Query(() => [ServiceCategory], {
-    name: 'serviceCatalog',
-    nullable: true,
+  @Query(() => [ServiceCatalogItemEntity], {
+    name: 'getServiceCatalog',
+    description: 'Get the complete service catalog with sub-categories',
   })
   async getServiceCatalog(
     @Args('language', { type: () => Language, defaultValue: Language.ES })

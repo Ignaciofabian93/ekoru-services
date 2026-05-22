@@ -165,14 +165,23 @@ fragment ServiceBookingFields on ServiceBooking {
 
 ## Queries
 
-### serviceCatalog
+### getServiceCatalog
 
-Returns all service categories — ideal for top-level navigation.
+Returns the complete service catalog with sub-categories — ideal for top-level navigation. Accepts a `language` argument (defaults to `ES`) and resolves the matching translation directly into flat `name` / `slug` / `href` fields, mirroring the marketplace and stores subgraphs.
 
 ```graphql
-query ServiceCatalog {
-  serviceCatalog {
-    ...ServiceCategoryFields
+query GetServiceCatalog($language: Language = ES) {
+  getServiceCatalog(language: $language) {
+    id
+    name
+    href
+    slug
+    subCategoryItems {
+      id
+      name
+      href
+      slug
+    }
   }
 }
 ```
@@ -181,7 +190,7 @@ query ServiceCatalog {
 
 ### serviceCategories
 
-Returns all service categories (same data as serviceCatalog, alternative query name).
+Returns all service categories (alternative query name; exposes the full `ServiceCategory` shape).
 
 ```graphql
 query ServiceCategories {

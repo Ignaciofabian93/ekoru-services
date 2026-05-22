@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Dev/ekoru-repos/ekoru-stores/src/**)",
+      "Read(//c/Dev/ekoru-repos/ekoru-marketplace/src/**)",
+      "Bash(npx jest *)",
+      "Bash(npx tsc *)",
+      "Bash(git stash *)",
+      "Bash(npx eslint *)"
+    ]
+  }
+}

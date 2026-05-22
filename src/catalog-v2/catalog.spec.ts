@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Language } from '@prisma/client';
 import { ServiceCatalogService } from './catalog.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotFoundError, InternalServerError } from '../common/exceptions/index';
@@ -43,21 +44,35 @@ describe('ServiceCatalogService', () => {
     const mockCategories = [
       {
         id: 1,
-        category: 'Categoría 1',
-        href: '/categoria-1',
+        translations: [
+          {
+            category: 'Categoría 1',
+            slug: 'categoria-1',
+            href: '/categoria-1',
+          },
+        ],
         subcategories: [
           {
             id: 1,
-            subCategory: 'Subcategoría 1',
-            serviceCategoryId: 1,
-            href: '/subcategoria-1',
+            translations: [
+              {
+                subCategory: 'Subcategoría 1',
+                slug: 'subcategoria-1',
+                href: '/subcategoria-1',
+              },
+            ],
           },
         ],
       },
       {
         id: 2,
-        category: 'Categoría 2',
-        href: '/categoria-2',
+        translations: [
+          {
+            category: 'Categoría 2',
+            slug: 'categoria-2',
+            href: '/categoria-2',
+          },
+        ],
         subcategories: [],
       },
     ];
@@ -69,23 +84,53 @@ describe('ServiceCatalogService', () => {
 
       const result = await service.getServiceCatalog();
 
-      expect(result).toEqual(mockCategories);
+      expect(result).toEqual([
+        {
+          id: 1,
+          name: 'Categoría 1',
+          slug: 'categoria-1',
+          href: '/categoria-1',
+          subCategoryItems: [
+            {
+              id: 1,
+              name: 'Subcategoría 1',
+              slug: 'subcategoria-1',
+              href: '/subcategoria-1',
+            },
+          ],
+        },
+        {
+          id: 2,
+          name: 'Categoría 2',
+          slug: 'categoria-2',
+          href: '/categoria-2',
+          subCategoryItems: [],
+        },
+      ]);
       expect(mockPrismaService.serviceCategory.findMany).toHaveBeenCalledWith({
+        where: { isActive: true },
         select: {
           id: true,
-          category: true,
-          href: true,
+          translations: {
+            where: { language: Language.ES },
+            select: { category: true, slug: true, href: true },
+            take: 1,
+          },
           subcategories: {
+            where: { isActive: true },
+            orderBy: { sortOrder: 'asc' },
             select: {
               id: true,
-              subCategory: true,
-              serviceCategoryId: true,
-              href: true,
+              translations: {
+                where: { language: Language.ES },
+                select: { subCategory: true, slug: true, href: true },
+                take: 1,
+              },
             },
           },
         },
         orderBy: {
-          category: 'asc',
+          sortOrder: 'asc',
         },
       });
     });
@@ -113,13 +158,29 @@ describe('ServiceCatalogService', () => {
     const mockCategories = [
       {
         id: 1,
+        translations: [{ category: 'Categoría 1', href: '/categoria-1' }],
+        subcategories: [
+          {
+            id: 1,
+            serviceCategoryId: 1,
+            translations: [
+              { subCategory: 'Subcategoría 1', href: '/subcategoria-1' },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const expectedCategories = [
+      {
+        id: 1,
         category: 'Categoría 1',
         href: '/categoria-1',
         subcategories: [
           {
             id: 1,
-            subCategory: 'Subcategoría 1',
             serviceCategoryId: 1,
+            subCategory: 'Subcategoría 1',
             href: '/subcategoria-1',
           },
         ],
@@ -133,18 +194,24 @@ describe('ServiceCatalogService', () => {
 
       const result = await service.getServiceCategories();
 
-      expect(result).toEqual(mockCategories);
+      expect(result).toEqual(expectedCategories);
       expect(mockPrismaService.serviceCategory.findMany).toHaveBeenCalledWith({
         select: {
           id: true,
-          category: true,
-          href: true,
+          translations: {
+            where: { language: Language.ES },
+            select: { category: true, href: true },
+            take: 1,
+          },
           subcategories: {
             select: {
               id: true,
-              subCategory: true,
               serviceCategoryId: true,
-              href: true,
+              translations: {
+                where: { language: Language.ES },
+                select: { subCategory: true, href: true },
+                take: 1,
+              },
             },
           },
         },
@@ -173,13 +240,27 @@ describe('ServiceCatalogService', () => {
   describe('getServiceCategory', () => {
     const mockCategory = {
       id: 1,
+      translations: [{ category: 'Categoría 1', href: '/categoria-1' }],
+      subcategories: [
+        {
+          id: 1,
+          serviceCategoryId: 1,
+          translations: [
+            { subCategory: 'Subcategoría 1', href: '/subcategoria-1' },
+          ],
+        },
+      ],
+    };
+
+    const expectedCategory = {
+      id: 1,
       category: 'Categoría 1',
       href: '/categoria-1',
       subcategories: [
         {
           id: 1,
-          subCategory: 'Subcategoría 1',
           serviceCategoryId: 1,
+          subCategory: 'Subcategoría 1',
           href: '/subcategoria-1',
         },
       ],
@@ -192,20 +273,26 @@ describe('ServiceCatalogService', () => {
 
       const result = await service.getServiceCategory(1);
 
-      expect(result).toEqual(mockCategory);
+      expect(result).toEqual(expectedCategory);
       expect(mockPrismaService.serviceCategory.findUnique).toHaveBeenCalledWith(
         {
           where: { id: 1 },
           select: {
             id: true,
-            category: true,
-            href: true,
+            translations: {
+              where: { language: Language.ES },
+              select: { category: true, href: true },
+              take: 1,
+            },
             subcategories: {
               select: {
                 id: true,
-                subCategory: true,
                 serviceCategoryId: true,
-                href: true,
+                translations: {
+                  where: { language: Language.ES },
+                  select: { subCategory: true, href: true },
+                  take: 1,
+                },
               },
             },
           },
@@ -236,18 +323,20 @@ describe('ServiceCatalogService', () => {
     const mockSubcategories = [
       {
         id: 1,
-        subCategory: 'Subcategoría 1',
         serviceCategoryId: 1,
-        href: '/subcategoria-1',
+        translations: [
+          { subCategory: 'Subcategoría 1', href: '/subcategoria-1' },
+        ],
         _count: {
           services: 5,
         },
       },
       {
         id: 2,
-        subCategory: 'Subcategoría 2',
         serviceCategoryId: 1,
-        href: '/subcategoria-2',
+        translations: [
+          { subCategory: 'Subcategoría 2', href: '/subcategoria-2' },
+        ],
         _count: {
           services: 3,
         },
@@ -273,9 +362,12 @@ describe('ServiceCatalogService', () => {
         take: 10,
         select: {
           id: true,
-          subCategory: true,
           serviceCategoryId: true,
-          href: true,
+          translations: {
+            where: { language: Language.ES },
+            select: { subCategory: true, href: true },
+            take: 1,
+          },
           _count: {
             select: {
               services: true,
@@ -305,9 +397,12 @@ describe('ServiceCatalogService', () => {
         take: 5,
         select: {
           id: true,
-          subCategory: true,
           serviceCategoryId: true,
-          href: true,
+          translations: {
+            where: { language: Language.ES },
+            select: { subCategory: true, href: true },
+            take: 1,
+          },
           _count: {
             select: {
               services: true,
@@ -345,12 +440,13 @@ describe('ServiceCatalogService', () => {
   describe('getServiceSubCategory', () => {
     const mockSubcategory = {
       id: 1,
-      subCategory: 'Subcategoría 1',
       serviceCategoryId: 1,
-      href: '/subcategoria-1',
+      translations: [
+        { subCategory: 'Subcategoría 1', href: '/subcategoria-1' },
+      ],
       serviceCategory: {
         id: 1,
-        category: 'Categoría 1',
+        translations: [{ category: 'Categoría 1' }],
       },
       _count: {
         services: 5,
@@ -365,7 +461,14 @@ describe('ServiceCatalogService', () => {
       const result = await service.getServiceSubCategory(1);
 
       expect(result).toEqual({
-        ...mockSubcategory,
+        id: 1,
+        serviceCategoryId: 1,
+        subCategory: 'Subcategoría 1',
+        href: '/subcategoria-1',
+        serviceCategory: {
+          id: 1,
+          category: 'Categoría 1',
+        },
         serviceCount: 5,
       });
       expect(
@@ -374,13 +477,20 @@ describe('ServiceCatalogService', () => {
         where: { id: 1 },
         select: {
           id: true,
-          subCategory: true,
           serviceCategoryId: true,
-          href: true,
+          translations: {
+            where: { language: Language.ES },
+            select: { subCategory: true, href: true },
+            take: 1,
+          },
           serviceCategory: {
             select: {
               id: true,
-              category: true,
+              translations: {
+                where: { language: Language.ES },
+                select: { category: true },
+                take: 1,
+              },
             },
           },
           _count: {

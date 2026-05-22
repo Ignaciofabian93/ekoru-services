@@ -45,19 +45,20 @@ http://localhost:4001/graphql
 
 ### Get Complete Service Catalog
 
-Retrieves all categories with their subcategories, ordered alphabetically.
+Retrieves all active categories with their active subcategories, ordered by `sortOrder`. The translation for the requested `language` (defaults to `ES`) is resolved directly into flat `name` / `slug` / `href` fields.
 
 ```graphql
-query GetServiceCatalog {
-  serviceCatalog {
+query GetServiceCatalog($language: Language = ES) {
+  getServiceCatalog(language: $language) {
     id
-    category
+    name
     href
-    subcategories {
+    slug
+    subCategoryItems {
       id
-      subCategory
-      serviceCategoryId
+      name
       href
+      slug
     }
   }
 }
@@ -68,17 +69,18 @@ query GetServiceCatalog {
 ```json
 {
   "data": {
-    "serviceCatalog": [
+    "getServiceCatalog": [
       {
-        "id": "1",
-        "category": "Home Services",
+        "id": 1,
+        "name": "Home Services",
         "href": "/home-services",
-        "subcategories": [
+        "slug": "home-services",
+        "subCategoryItems": [
           {
-            "id": "1",
-            "subCategory": "Plumbing",
-            "serviceCategoryId": "1",
-            "href": "/plumbing"
+            "id": 1,
+            "name": "Plumbing",
+            "href": "/plumbing",
+            "slug": "plumbing"
           }
         ]
       }

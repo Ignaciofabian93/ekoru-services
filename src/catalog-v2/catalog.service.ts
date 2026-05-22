@@ -9,6 +9,7 @@ import {
   calculatePrismaParams,
   createPaginatedResponse,
 } from '../common/utils/index.js';
+import type { ServiceCatalog } from '../types/catalog.js';
 
 @Injectable()
 export class ServiceCatalogService {
@@ -16,23 +17,27 @@ export class ServiceCatalogService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async getServiceCatalog(language: Language = Language.ES) {
+  async getServiceCatalog(
+    language: Language = Language.ES,
+  ): Promise<ServiceCatalog> {
     try {
       const serviceCategories = await this.prisma.serviceCategory.findMany({
+        where: { isActive: true },
         select: {
           id: true,
           translations: {
             where: { language },
-            select: { category: true, href: true },
+            select: { category: true, slug: true, href: true },
             take: 1,
           },
           subcategories: {
+            where: { isActive: true },
+            orderBy: { sortOrder: 'asc' },
             select: {
               id: true,
-              serviceCategoryId: true,
               translations: {
                 where: { language },
-                select: { subCategory: true, href: true },
+                select: { subCategory: true, slug: true, href: true },
                 take: 1,
               },
             },
@@ -49,13 +54,14 @@ export class ServiceCatalogService {
 
       return serviceCategories.map((cat) => ({
         id: cat.id,
-        category: cat.translations[0]?.category,
-        href: cat.translations[0]?.href,
-        subcategories: cat.subcategories.map((sub) => ({
+        name: cat.translations[0]?.category || '',
+        slug: cat.translations[0]?.slug || '',
+        href: cat.translations[0]?.href || '',
+        subCategoryItems: cat.subcategories.map((sub) => ({
           id: sub.id,
-          serviceCategoryId: sub.serviceCategoryId,
-          subCategory: sub.translations[0]?.subCategory,
-          href: sub.translations[0]?.href,
+          name: sub.translations[0]?.subCategory || '',
+          slug: sub.translations[0]?.slug || '',
+          href: sub.translations[0]?.href || '',
         })),
       }));
     } catch (error) {
