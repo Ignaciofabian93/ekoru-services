@@ -55,16 +55,20 @@ fragment PageInfoFields on PageInfo {
 
 fragment ServiceCategoryFields on ServiceCategory {
   id
-  category
-  href
+  translation {
+    category
+    slug
+    href
+  }
 }
 
 fragment ServiceSubCategoryFields on ServiceSubCategory {
   id
-  subCategory
-  serviceCategoryId
-  serviceCount
-  href
+  translation {
+    subCategory
+    slug
+    href
+  }
 }
 
 fragment ServiceFields on Service {
@@ -188,70 +192,63 @@ query GetServiceCatalog($language: Language = ES) {
 
 ---
 
-### serviceCategories
+### getServiceCategories
 
-Returns all service categories (alternative query name; exposes the full `ServiceCategory` shape).
-
-```graphql
-query ServiceCategories {
-  serviceCategories {
-    ...ServiceCategoryFields
-  }
-}
-```
-
----
-
-### getServiceCategory
+Paginated list of service categories with translation resolution by language.
 
 ```graphql
-query GetServiceCategory($id: ID!) {
-  getServiceCategory(id: $id) {
+query GetServiceCategories(
+  $limit: Int = 20
+  $offset: Int = 0
+  $language: Language = ES
+) {
+  getServiceCategories(limit: $limit, offset: $offset, language: $language) {
     ...ServiceCategoryFields
+    subcategories {
+      ...ServiceSubCategoryFields
+    }
   }
 }
 ```
 
 **Variables**
 ```json
-{ "id": "3" }
+{ "limit": 20, "offset": 0, "language": "ES" }
+```
+
+---
+
+### getServiceCategoryBySlug
+
+```graphql
+query GetServiceCategoryBySlug($slug: String!, $language: Language!) {
+  getServiceCategoryBySlug(slug: $slug, language: $language) {
+    ...ServiceCategoryFields
+    subcategories {
+      ...ServiceSubCategoryFields
+    }
+  }
+}
+```
+
+**Variables**
+```json
+{ "slug": "diseno-grafico", "language": "ES" }
 ```
 
 ---
 
 ### getServiceSubCategories
 
+Paginated list of service sub-categories with translation resolution by language.
+
 ```graphql
 query GetServiceSubCategories(
-  $serviceCategoryId: ID!
-  $page: Int = 1
-  $pageSize: Int = 10
+  $limit: Int = 20
+  $offset: Int = 0
+  $language: Language = ES
 ) {
-  getServiceSubCategories(
-    serviceCategoryId: $serviceCategoryId
-    page: $page
-    pageSize: $pageSize
-  ) {
-    nodes {
-      ...ServiceSubCategoryFields
-    }
-    pageInfo { ...PageInfoFields }
-  }
-}
-```
-
-**Variables**
-```json
-{ "serviceCategoryId": "3", "page": 1, "pageSize": 10 }
-```
-
----
-
-### getServiceSubCategory
-
-```graphql
-query GetServiceSubCategory($id: ID!) {
-  getServiceSubCategory(id: $id) {
+  getServiceSubCategories(limit: $limit, offset: $offset, language: $language) {
     ...ServiceSubCategoryFields
   }
 }
@@ -259,7 +256,24 @@ query GetServiceSubCategory($id: ID!) {
 
 **Variables**
 ```json
-{ "id": "12" }
+{ "limit": 20, "offset": 0, "language": "ES" }
+```
+
+---
+
+### getServiceSubCategoryBySlug
+
+```graphql
+query GetServiceSubCategoryBySlug($slug: String!, $language: Language) {
+  getServiceSubCategoryBySlug(slug: $slug, language: $language) {
+    ...ServiceSubCategoryFields
+  }
+}
+```
+
+**Variables**
+```json
+{ "slug": "fotografia-bodas", "language": "ES" }
 ```
 
 ---

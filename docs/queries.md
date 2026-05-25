@@ -92,71 +92,58 @@ query GetServiceCatalog($language: Language = ES) {
 ### Get All Service Categories
 
 ```graphql
-query GetServiceCategories {
-  serviceCategories {
+query GetServiceCategories(
+  $limit: Int = 20
+  $offset: Int = 0
+  $language: Language = ES
+) {
+  getServiceCategories(limit: $limit, offset: $offset, language: $language) {
     id
-    category
-    href
-    subcategories {
-      id
-      subCategory
+    translation {
+      category
+      slug
       href
     }
-  }
-}
-```
-
-### Get Single Category
-
-```graphql
-query GetCategory($id: ID!) {
-  getServiceCategory(id: $id) {
-    id
-    category
-    href
     subcategories {
       id
-      subCategory
-      serviceCategoryId
-      href
-    }
-  }
-}
-```
-
-**Variables:**
-
-```json
-{
-  "id": "1"
-}
-```
-
-### Get Subcategories (Paginated)
-
-```graphql
-query GetSubcategories($categoryId: ID!, $page: Int, $pageSize: Int) {
-  getServiceSubCategories(
-    serviceCategoryId: $categoryId
-    page: $page
-    pageSize: $pageSize
-  ) {
-    edges {
-      cursor
-      node {
-        id
+      translation {
         subCategory
-        serviceCategoryId
+        slug
         href
-        serviceCount
       }
     }
-    pageInfo {
-      totalCount
-      hasNextPage
-      hasPreviousPage
-      page
-      pageSize
+  }
+}
+```
+
+**Variables:**
+
+```json
+{
+  "limit": 20,
+  "offset": 0,
+  "language": "ES"
+}
+```
+
+### Get Service Category By Slug
+
+```graphql
+query GetServiceCategoryBySlug($slug: String!, $language: Language!) {
+  getServiceCategoryBySlug(slug: $slug, language: $language) {
+    id
+    translation {
+      category
+      slug
+      href
+    }
+    subcategories {
+      id
+      translation {
+        subCategory
+        slug
+        href
+      }
     }
   }
 }
@@ -166,25 +153,50 @@ query GetSubcategories($categoryId: ID!, $page: Int, $pageSize: Int) {
 
 ```json
 {
-  "categoryId": "1",
-  "page": 1,
-  "pageSize": 10
+  "slug": "diseno-grafico",
+  "language": "ES"
 }
 ```
 
-### Get Single Subcategory
+### Get All Service Subcategories
 
 ```graphql
-query GetSubcategory($id: ID!) {
-  getServiceSubCategory(id: $id) {
+query GetServiceSubCategories(
+  $limit: Int = 20
+  $offset: Int = 0
+  $language: Language = ES
+) {
+  getServiceSubCategories(limit: $limit, offset: $offset, language: $language) {
     id
-    subCategory
-    serviceCategoryId
-    href
-    serviceCount
-    serviceCategory {
-      id
-      category
+    translation {
+      subCategory
+      slug
+      href
+    }
+  }
+}
+```
+
+**Variables:**
+
+```json
+{
+  "limit": 20,
+  "offset": 0,
+  "language": "ES"
+}
+```
+
+### Get Service Subcategory By Slug
+
+```graphql
+query GetServiceSubCategoryBySlug($slug: String!, $language: Language) {
+  getServiceSubCategoryBySlug(slug: $slug, language: $language) {
+    id
+    translation {
+      subCategory
+      slug
+      href
     }
   }
 }

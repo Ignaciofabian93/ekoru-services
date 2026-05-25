@@ -65,14 +65,14 @@ export class ServiceSubCategoryResolver {
    *
    * @example
    * query {
-   *   getServiceSubCategoryList(limit: 10, offset: 0, language: ES) {
+   *   getServiceSubCategories(limit: 10, offset: 0, language: ES) {
    *     id
    *     translation { subCategory }
    *   }
    * }
    */
   @Query(() => [ServiceSubCategoryEntity])
-  async getServiceSubCategoryList(
+  async getServiceSubCategories(
     @Args('limit', { type: () => Int, defaultValue: 20 }) limit: number,
     @Args('offset', { type: () => Int, defaultValue: 0 }) offset: number,
     @Args('language', { type: () => Language, defaultValue: Language.ES })
@@ -80,7 +80,7 @@ export class ServiceSubCategoryResolver {
     @Context() context: GraphQLContext,
   ): Promise<ServiceSubCategory[]> {
     this.logger.debug(
-      `Query: getServiceSubCategoryList - limit: ${limit}, offset: ${offset}, language: ${language}`,
+      `Query: getServiceSubCategories - limit: ${limit}, offset: ${offset}, language: ${language}`,
     );
 
     context.language = language;
