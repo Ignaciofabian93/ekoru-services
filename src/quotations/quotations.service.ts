@@ -69,11 +69,15 @@ export class QuotationsService {
     }
   }
 
-  async getQuotationsByClient(
-    clientId: string,
-    page: number,
-    pageSize: number,
-  ) {
+  async getQuotationsByClient({
+    clientId,
+    page,
+    pageSize,
+  }: {
+    clientId: string;
+    page: number;
+    pageSize: number;
+  }) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
 
@@ -102,11 +106,15 @@ export class QuotationsService {
     }
   }
 
-  async getQuotationsByProvider(
-    providerId: string,
-    page: number,
-    pageSize: number,
-  ) {
+  async getQuotationsByProvider({
+    providerId,
+    page,
+    pageSize,
+  }: {
+    providerId: string;
+    page: number;
+    pageSize: number;
+  }) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
 
@@ -137,11 +145,15 @@ export class QuotationsService {
     }
   }
 
-  async getQuotationsByService(
-    serviceId: number,
-    page: number,
-    pageSize: number,
-  ) {
+  async getQuotationsByService({
+    serviceId,
+    page,
+    pageSize,
+  }: {
+    serviceId: number;
+    page: number;
+    pageSize: number;
+  }) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
 
@@ -170,11 +182,15 @@ export class QuotationsService {
     }
   }
 
-  async getQuotationsByStatus(
-    status: QuotationStatus,
-    page: number,
-    pageSize: number,
-  ) {
+  async getQuotationsByStatus({
+    status,
+    page,
+    pageSize,
+  }: {
+    status: QuotationStatus;
+    page: number;
+    pageSize: number;
+  }) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
 
@@ -371,7 +387,7 @@ export class QuotationsService {
     }
   }
 
-  async declineQuotation(id: number, reason?: string) {
+  async declineQuotation({ id, reason }: { id: number; reason?: string }) {
     try {
       const quotation = await this.prisma.quotation.update({
         where: { id },
@@ -471,7 +487,7 @@ export class QuotationsService {
     }
   }
 
-  async cancelQuotation(id: number, reason?: string) {
+  async cancelQuotation({ id, reason }: { id: number; reason?: string }) {
     try {
       const quotation = await this.prisma.quotation.update({
         where: { id },

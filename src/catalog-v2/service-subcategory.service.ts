@@ -14,10 +14,13 @@ export class ServiceSubCategoryService {
     private readonly i18nService: I18nService,
   ) {}
 
-  async getServiceSubCategoryBySlug(
-    slug: string,
-    language?: Language,
-  ): Promise<ServiceSubCategory> {
+  async getServiceSubCategoryBySlug({
+    slug,
+    language,
+  }: {
+    slug: string;
+    language?: Language;
+  }): Promise<ServiceSubCategory> {
     const lang = language ?? this.i18nService.getDefaultLanguage();
     const subCategory = await this.serviceSubCategoryRepository.findBySlug(
       slug,
@@ -35,11 +38,15 @@ export class ServiceSubCategoryService {
     return subCategory;
   }
 
-  async getServiceSubCategories(
-    limit: number = 20,
-    offset: number = 0,
-    language?: Language,
-  ): Promise<ServiceSubCategory[]> {
+  async getServiceSubCategories({
+    limit = 20,
+    offset = 0,
+    language,
+  }: {
+    limit?: number;
+    offset?: number;
+    language?: Language;
+  }): Promise<ServiceSubCategory[]> {
     const lang = language ?? this.i18nService.getDefaultLanguage();
     if (limit < 1 || limit > 100)
       throw new Error(

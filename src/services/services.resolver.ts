@@ -20,7 +20,7 @@ export class ServicesResolver {
     @Args('isActive', { type: () => Boolean, nullable: true })
     isActive?: boolean,
   ) {
-    return this.servicesService.getServices(page, pageSize, isActive);
+    return this.servicesService.getServices({ page, pageSize, isActive });
   }
 
   @Query(() => ServiceConnection, { name: 'getServicesBySeller' })
@@ -31,12 +31,12 @@ export class ServicesResolver {
     @Args('isActive', { type: () => Boolean, nullable: true })
     isActive?: boolean,
   ) {
-    return this.servicesService.getServicesBySeller(
+    return this.servicesService.getServicesBySeller({
       sellerId,
       page,
       pageSize,
       isActive,
-    );
+    });
   }
 
   @Query(() => ServiceConnection, { name: 'getServicesBySubCategory' })
@@ -47,12 +47,12 @@ export class ServicesResolver {
     @Args('isActive', { type: () => Boolean, nullable: true })
     isActive?: boolean,
   ) {
-    return this.servicesService.getServicesBySubCategory(
-      parseInt(subcategoryId, 10),
+    return this.servicesService.getServicesBySubCategory({
+      subcategoryId: parseInt(subcategoryId, 10),
       page,
       pageSize,
       isActive,
-    );
+    });
   }
 
   @Query(() => ServiceConnection, { name: 'getServicesByPricingType' })
@@ -64,12 +64,12 @@ export class ServicesResolver {
     @Args('isActive', { type: () => Boolean, nullable: true })
     isActive?: boolean,
   ) {
-    return this.servicesService.getServicesByPricingType(
+    return this.servicesService.getServicesByPricingType({
       pricingType,
       page,
       pageSize,
       isActive,
-    );
+    });
   }
 
   @Mutation(() => Service)

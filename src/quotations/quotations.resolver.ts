@@ -19,11 +19,11 @@ export class QuotationsResolver {
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
   ) {
-    return this.quotationsService.getQuotationsByClient(
+    return this.quotationsService.getQuotationsByClient({
       clientId,
       page,
       pageSize,
-    );
+    });
   }
 
   @Query(() => QuotationConnection, { name: 'getQuotationsByProvider' })
@@ -32,11 +32,11 @@ export class QuotationsResolver {
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
   ) {
-    return this.quotationsService.getQuotationsByProvider(
+    return this.quotationsService.getQuotationsByProvider({
       providerId,
       page,
       pageSize,
-    );
+    });
   }
 
   @Query(() => QuotationConnection, { name: 'getQuotationsByService' })
@@ -45,11 +45,11 @@ export class QuotationsResolver {
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
   ) {
-    return this.quotationsService.getQuotationsByService(
-      parseInt(serviceId, 10),
+    return this.quotationsService.getQuotationsByService({
+      serviceId: parseInt(serviceId, 10),
       page,
       pageSize,
-    );
+    });
   }
 
   @Query(() => QuotationConnection, { name: 'getQuotationsByStatus' })
@@ -58,7 +58,11 @@ export class QuotationsResolver {
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
   ) {
-    return this.quotationsService.getQuotationsByStatus(status, page, pageSize);
+    return this.quotationsService.getQuotationsByStatus({
+      status,
+      page,
+      pageSize,
+    });
   }
 
   @Mutation(() => Quotation)
@@ -81,7 +85,10 @@ export class QuotationsResolver {
     @Args('id', { type: () => ID }) id: string,
     @Args('reason', { type: () => String, nullable: true }) reason?: string,
   ) {
-    return this.quotationsService.declineQuotation(parseInt(id, 10), reason);
+    return this.quotationsService.declineQuotation({
+      id: parseInt(id, 10),
+      reason,
+    });
   }
 
   @Mutation(() => Quotation)
@@ -94,7 +101,10 @@ export class QuotationsResolver {
     @Args('id', { type: () => ID }) id: string,
     @Args('reason', { type: () => String, nullable: true }) reason?: string,
   ) {
-    return this.quotationsService.cancelQuotation(parseInt(id, 10), reason);
+    return this.quotationsService.cancelQuotation({
+      id: parseInt(id, 10),
+      reason,
+    });
   }
 
   @Mutation(() => Boolean)

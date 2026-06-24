@@ -123,7 +123,11 @@ describe('QuotationsService', () => {
       mockPrismaService.quotation.count.mockResolvedValue(1);
       mockPrismaService.quotation.findMany.mockResolvedValue(mockQuotations);
 
-      const result = await service.getQuotationsByClient('client-123', 1, 10);
+      const result = await service.getQuotationsByClient({
+        clientId: 'client-123',
+        page: 1,
+        pageSize: 10,
+      });
 
       expect(mockPrismaService.quotation.count).toHaveBeenCalledWith({
         where: { clientId: 'client-123' },
@@ -143,7 +147,11 @@ describe('QuotationsService', () => {
       mockPrismaService.quotation.count.mockResolvedValue(0);
       mockPrismaService.quotation.findMany.mockResolvedValue([]);
 
-      const result = await service.getQuotationsByClient('new-client', 1, 10);
+      const result = await service.getQuotationsByClient({
+        clientId: 'new-client',
+        page: 1,
+        pageSize: 10,
+      });
 
       expect(result.nodes).toHaveLength(0);
       expect(result.pageInfo.totalCount).toBe(0);
@@ -155,7 +163,11 @@ describe('QuotationsService', () => {
       );
 
       await expect(
-        service.getQuotationsByClient('client-123', 1, 10),
+        service.getQuotationsByClient({
+          clientId: 'client-123',
+          page: 1,
+          pageSize: 10,
+        }),
       ).rejects.toThrow(
         new InternalServerError(
           'Error al obtener las cotizaciones del cliente',
@@ -171,11 +183,11 @@ describe('QuotationsService', () => {
       mockPrismaService.quotation.count.mockResolvedValue(1);
       mockPrismaService.quotation.findMany.mockResolvedValue(mockQuotations);
 
-      const result = await service.getQuotationsByProvider(
-        'provider-456',
-        1,
-        10,
-      );
+      const result = await service.getQuotationsByProvider({
+        providerId: 'provider-456',
+        page: 1,
+        pageSize: 10,
+      });
 
       expect(mockPrismaService.quotation.count).toHaveBeenCalledWith({
         where: { providerId: 'provider-456' },
@@ -192,11 +204,11 @@ describe('QuotationsService', () => {
       mockPrismaService.quotation.count.mockResolvedValue(0);
       mockPrismaService.quotation.findMany.mockResolvedValue([]);
 
-      const result = await service.getQuotationsByProvider(
-        'new-provider',
-        1,
-        10,
-      );
+      const result = await service.getQuotationsByProvider({
+        providerId: 'new-provider',
+        page: 1,
+        pageSize: 10,
+      });
 
       expect(result.nodes).toHaveLength(0);
       expect(result.pageInfo.totalCount).toBe(0);
@@ -208,7 +220,11 @@ describe('QuotationsService', () => {
       );
 
       await expect(
-        service.getQuotationsByProvider('provider-456', 1, 10),
+        service.getQuotationsByProvider({
+          providerId: 'provider-456',
+          page: 1,
+          pageSize: 10,
+        }),
       ).rejects.toThrow(
         new InternalServerError(
           'Error al obtener las cotizaciones del proveedor',
@@ -224,7 +240,11 @@ describe('QuotationsService', () => {
       mockPrismaService.quotation.count.mockResolvedValue(1);
       mockPrismaService.quotation.findMany.mockResolvedValue(mockQuotations);
 
-      const result = await service.getQuotationsByService(1, 1, 10);
+      const result = await service.getQuotationsByService({
+        serviceId: 1,
+        page: 1,
+        pageSize: 10,
+      });
 
       expect(mockPrismaService.quotation.count).toHaveBeenCalledWith({
         where: { serviceId: 1 },
@@ -241,7 +261,11 @@ describe('QuotationsService', () => {
       mockPrismaService.quotation.count.mockResolvedValue(20);
       mockPrismaService.quotation.findMany.mockResolvedValue(mockQuotations);
 
-      await service.getQuotationsByService(1, 3, 5);
+      await service.getQuotationsByService({
+        serviceId: 1,
+        page: 3,
+        pageSize: 5,
+      });
 
       expect(mockPrismaService.quotation.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -256,7 +280,9 @@ describe('QuotationsService', () => {
         new Error('Database error'),
       );
 
-      await expect(service.getQuotationsByService(1, 1, 10)).rejects.toThrow(
+      await expect(
+        service.getQuotationsByService({ serviceId: 1, page: 1, pageSize: 10 }),
+      ).rejects.toThrow(
         new InternalServerError(
           'Error al obtener las cotizaciones del servicio',
         ),
@@ -271,11 +297,11 @@ describe('QuotationsService', () => {
       mockPrismaService.quotation.count.mockResolvedValue(1);
       mockPrismaService.quotation.findMany.mockResolvedValue(mockQuotations);
 
-      const result = await service.getQuotationsByStatus(
-        QuotationStatus.PENDING,
-        1,
-        10,
-      );
+      const result = await service.getQuotationsByStatus({
+        status: QuotationStatus.PENDING,
+        page: 1,
+        pageSize: 10,
+      });
 
       expect(mockPrismaService.quotation.count).toHaveBeenCalledWith({
         where: { status: QuotationStatus.PENDING },
@@ -297,7 +323,11 @@ describe('QuotationsService', () => {
         acceptedQuotations,
       );
 
-      await service.getQuotationsByStatus(QuotationStatus.ACCEPTED, 1, 10);
+      await service.getQuotationsByStatus({
+        status: QuotationStatus.ACCEPTED,
+        page: 1,
+        pageSize: 10,
+      });
 
       expect(mockPrismaService.quotation.count).toHaveBeenCalledWith({
         where: { status: QuotationStatus.ACCEPTED },
@@ -310,7 +340,11 @@ describe('QuotationsService', () => {
       );
 
       await expect(
-        service.getQuotationsByStatus(QuotationStatus.PENDING, 1, 10),
+        service.getQuotationsByStatus({
+          status: QuotationStatus.PENDING,
+          page: 1,
+          pageSize: 10,
+        }),
       ).rejects.toThrow(
         new InternalServerError('Error al obtener las cotizaciones por estado'),
       );
@@ -543,7 +577,10 @@ describe('QuotationsService', () => {
 
       mockPrismaService.quotation.update.mockResolvedValue(declinedQuotation);
 
-      const result = await service.declineQuotation(1, 'Not available');
+      const result = await service.declineQuotation({
+        id: 1,
+        reason: 'Not available',
+      });
 
       expect(mockPrismaService.quotation.update).toHaveBeenCalledWith({
         where: { id: 1 },
@@ -567,7 +604,7 @@ describe('QuotationsService', () => {
 
       mockPrismaService.quotation.update.mockResolvedValue(declinedQuotation);
 
-      await service.declineQuotation(1);
+      await service.declineQuotation({ id: 1 });
 
       expect(mockPrismaService.quotation.update).toHaveBeenCalledWith({
         where: { id: 1 },
@@ -585,7 +622,9 @@ describe('QuotationsService', () => {
         new Error('Database error'),
       );
 
-      await expect(service.declineQuotation(1, 'reason')).rejects.toThrow(
+      await expect(
+        service.declineQuotation({ id: 1, reason: 'reason' }),
+      ).rejects.toThrow(
         new InternalServerError('Error al rechazar la cotización'),
       );
     });
@@ -639,7 +678,10 @@ describe('QuotationsService', () => {
 
       mockPrismaService.quotation.update.mockResolvedValue(cancelledQuotation);
 
-      const result = await service.cancelQuotation(1, 'Client request');
+      const result = await service.cancelQuotation({
+        id: 1,
+        reason: 'Client request',
+      });
 
       expect(mockPrismaService.quotation.update).toHaveBeenCalledWith({
         where: { id: 1 },
@@ -663,7 +705,7 @@ describe('QuotationsService', () => {
 
       mockPrismaService.quotation.update.mockResolvedValue(cancelledQuotation);
 
-      await service.cancelQuotation(1);
+      await service.cancelQuotation({ id: 1 });
 
       expect(mockPrismaService.quotation.update).toHaveBeenCalledWith({
         where: { id: 1 },
@@ -681,7 +723,9 @@ describe('QuotationsService', () => {
         new Error('Database error'),
       );
 
-      await expect(service.cancelQuotation(1, 'reason')).rejects.toThrow(
+      await expect(
+        service.cancelQuotation({ id: 1, reason: 'reason' }),
+      ).rejects.toThrow(
         new InternalServerError('Error al cancelar la cotización'),
       );
     });

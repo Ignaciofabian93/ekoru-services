@@ -16,7 +16,15 @@ export class ReviewsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async getServiceReviews(serviceId: number, page: number, pageSize: number) {
+  async getServiceReviews({
+    serviceId,
+    page,
+    pageSize,
+  }: {
+    serviceId: number;
+    page: number;
+    pageSize: number;
+  }) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
 
@@ -51,11 +59,15 @@ export class ReviewsService {
     }
   }
 
-  async getServiceReviewsByReviewer(
-    reviewerId: string,
-    page: number,
-    pageSize: number,
-  ) {
+  async getServiceReviewsByReviewer({
+    reviewerId,
+    page,
+    pageSize,
+  }: {
+    reviewerId: string;
+    page: number;
+    pageSize: number;
+  }) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
 

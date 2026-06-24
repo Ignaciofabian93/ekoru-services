@@ -13,11 +13,11 @@ export class ReviewsResolver {
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
   ) {
-    return this.reviewsService.getServiceReviews(
-      parseInt(serviceId, 10),
+    return this.reviewsService.getServiceReviews({
+      serviceId: parseInt(serviceId, 10),
       page,
       pageSize,
-    );
+    });
   }
 
   @Query(() => ServiceReviewConnection, { name: 'getServiceReviewsByReviewer' })
@@ -26,11 +26,11 @@ export class ReviewsResolver {
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
   ) {
-    return this.reviewsService.getServiceReviewsByReviewer(
+    return this.reviewsService.getServiceReviewsByReviewer({
       reviewerId,
       page,
       pageSize,
-    );
+    });
   }
 
   @Mutation(() => ServiceReview)

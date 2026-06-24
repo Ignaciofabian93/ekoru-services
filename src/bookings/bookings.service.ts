@@ -44,7 +44,15 @@ export class BookingsService {
     }
   }
 
-  async getServiceBookings(page: number, pageSize: number, status?: string) {
+  async getServiceBookings({
+    page,
+    pageSize,
+    status,
+  }: {
+    page: number;
+    pageSize: number;
+    status?: string;
+  }) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
 
@@ -64,12 +72,17 @@ export class BookingsService {
     }
   }
 
-  async getServiceBookingsByClient(
-    clientId: string,
-    page: number,
-    pageSize: number,
-    status?: string,
-  ) {
+  async getServiceBookingsByClient({
+    clientId,
+    page,
+    pageSize,
+    status,
+  }: {
+    clientId: string;
+    page: number;
+    pageSize: number;
+    status?: string;
+  }) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
 
@@ -94,12 +107,17 @@ export class BookingsService {
     }
   }
 
-  async getServiceBookingsByProvider(
-    providerId: string,
-    page: number,
-    pageSize: number,
-    status?: string,
-  ) {
+  async getServiceBookingsByProvider({
+    providerId,
+    page,
+    pageSize,
+    status,
+  }: {
+    providerId: string;
+    page: number;
+    pageSize: number;
+    status?: string;
+  }) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
 
@@ -124,11 +142,15 @@ export class BookingsService {
     }
   }
 
-  async getServiceBookingsByService(
-    serviceId: number,
-    page: number,
-    pageSize: number,
-  ) {
+  async getServiceBookingsByService({
+    serviceId,
+    page,
+    pageSize,
+  }: {
+    serviceId: number;
+    page: number;
+    pageSize: number;
+  }) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
 
@@ -222,7 +244,15 @@ export class BookingsService {
     }
   }
 
-  async cancelServiceBooking(id: number, cancelledBy: string, reason: string) {
+  async cancelServiceBooking({
+    id,
+    cancelledBy,
+    reason,
+  }: {
+    id: number;
+    cancelledBy: string;
+    reason: string;
+  }) {
     try {
       const booking = await this.prisma.serviceBooking.update({
         where: { id },

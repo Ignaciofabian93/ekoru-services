@@ -192,7 +192,7 @@ describe('ServicesService', () => {
       mockPrismaService.service.count.mockResolvedValue(1);
       mockPrismaService.service.findMany.mockResolvedValue(mockServices);
 
-      const result = await service.getServices(1, 10);
+      const result = await service.getServices({ page: 1, pageSize: 10 });
 
       expect(mockPrismaService.service.count).toHaveBeenCalledWith({
         where: {},
@@ -212,7 +212,7 @@ describe('ServicesService', () => {
       mockPrismaService.service.count.mockResolvedValue(1);
       mockPrismaService.service.findMany.mockResolvedValue(mockServices);
 
-      await service.getServices(1, 10, true);
+      await service.getServices({ page: 1, pageSize: 10, isActive: true });
 
       expect(mockPrismaService.service.count).toHaveBeenCalledWith({
         where: { isActive: true },
@@ -228,7 +228,7 @@ describe('ServicesService', () => {
       mockPrismaService.service.count.mockResolvedValue(0);
       mockPrismaService.service.findMany.mockResolvedValue([]);
 
-      await service.getServices(1, 10, false);
+      await service.getServices({ page: 1, pageSize: 10, isActive: false });
 
       expect(mockPrismaService.service.count).toHaveBeenCalledWith({
         where: { isActive: false },
@@ -240,7 +240,9 @@ describe('ServicesService', () => {
         new Error('Database error'),
       );
 
-      await expect(service.getServices(1, 10)).rejects.toThrow(
+      await expect(
+        service.getServices({ page: 1, pageSize: 10 }),
+      ).rejects.toThrow(
         new InternalServerError('Error al obtener los servicios'),
       );
     });
@@ -258,7 +260,11 @@ describe('ServicesService', () => {
       mockPrismaService.service.count.mockResolvedValue(1);
       mockPrismaService.service.findMany.mockResolvedValue(mockServices);
 
-      const result = await service.getServicesBySeller('seller-123', 1, 10);
+      const result = await service.getServicesBySeller({
+        sellerId: 'seller-123',
+        page: 1,
+        pageSize: 10,
+      });
 
       expect(mockPrismaService.service.count).toHaveBeenCalledWith({
         where: { sellerId: 'seller-123' },
@@ -276,7 +282,12 @@ describe('ServicesService', () => {
       mockPrismaService.service.count.mockResolvedValue(1);
       mockPrismaService.service.findMany.mockResolvedValue(mockServices);
 
-      await service.getServicesBySeller('seller-123', 1, 10, true);
+      await service.getServicesBySeller({
+        sellerId: 'seller-123',
+        page: 1,
+        pageSize: 10,
+        isActive: true,
+      });
 
       expect(mockPrismaService.service.count).toHaveBeenCalledWith({
         where: { sellerId: 'seller-123', isActive: true },
@@ -294,7 +305,11 @@ describe('ServicesService', () => {
       );
 
       await expect(
-        service.getServicesBySeller('seller-123', 1, 10),
+        service.getServicesBySeller({
+          sellerId: 'seller-123',
+          page: 1,
+          pageSize: 10,
+        }),
       ).rejects.toThrow(
         new InternalServerError('Error al obtener los servicios del vendedor'),
       );
@@ -313,7 +328,11 @@ describe('ServicesService', () => {
       mockPrismaService.service.count.mockResolvedValue(1);
       mockPrismaService.service.findMany.mockResolvedValue(mockServices);
 
-      const result = await service.getServicesBySubCategory(1, 1, 10);
+      const result = await service.getServicesBySubCategory({
+        subcategoryId: 1,
+        page: 1,
+        pageSize: 10,
+      });
 
       expect(mockPrismaService.service.count).toHaveBeenCalledWith({
         where: { subcategoryId: 1 },
@@ -331,7 +350,12 @@ describe('ServicesService', () => {
       mockPrismaService.service.count.mockResolvedValue(1);
       mockPrismaService.service.findMany.mockResolvedValue(mockServices);
 
-      await service.getServicesBySubCategory(1, 1, 10, true);
+      await service.getServicesBySubCategory({
+        subcategoryId: 1,
+        page: 1,
+        pageSize: 10,
+        isActive: true,
+      });
 
       expect(mockPrismaService.service.count).toHaveBeenCalledWith({
         where: { subcategoryId: 1, isActive: true },
@@ -343,7 +367,13 @@ describe('ServicesService', () => {
         new Error('Database error'),
       );
 
-      await expect(service.getServicesBySubCategory(1, 1, 10)).rejects.toThrow(
+      await expect(
+        service.getServicesBySubCategory({
+          subcategoryId: 1,
+          page: 1,
+          pageSize: 10,
+        }),
+      ).rejects.toThrow(
         new InternalServerError(
           'Error al obtener los servicios por subcategoría',
         ),
@@ -363,11 +393,11 @@ describe('ServicesService', () => {
       mockPrismaService.service.count.mockResolvedValue(1);
       mockPrismaService.service.findMany.mockResolvedValue(mockServices);
 
-      const result = await service.getServicesByPricingType(
-        ServicePricing.FIXED,
-        1,
-        10,
-      );
+      const result = await service.getServicesByPricingType({
+        pricingType: ServicePricing.FIXED,
+        page: 1,
+        pageSize: 10,
+      });
 
       expect(mockPrismaService.service.count).toHaveBeenCalledWith({
         where: { pricingType: ServicePricing.FIXED },
@@ -385,7 +415,12 @@ describe('ServicesService', () => {
       mockPrismaService.service.count.mockResolvedValue(1);
       mockPrismaService.service.findMany.mockResolvedValue(mockServices);
 
-      await service.getServicesByPricingType(ServicePricing.FIXED, 1, 10, true);
+      await service.getServicesByPricingType({
+        pricingType: ServicePricing.FIXED,
+        page: 1,
+        pageSize: 10,
+        isActive: true,
+      });
 
       expect(mockPrismaService.service.count).toHaveBeenCalledWith({
         where: { pricingType: ServicePricing.FIXED, isActive: true },
@@ -398,7 +433,11 @@ describe('ServicesService', () => {
       );
 
       await expect(
-        service.getServicesByPricingType(ServicePricing.FIXED, 1, 10),
+        service.getServicesByPricingType({
+          pricingType: ServicePricing.FIXED,
+          page: 1,
+          pageSize: 10,
+        }),
       ).rejects.toThrow(
         new InternalServerError(
           'Error al obtener los servicios por tipo de precio',

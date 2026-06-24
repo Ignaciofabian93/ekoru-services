@@ -21,7 +21,7 @@ export class BookingsResolver {
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
     @Args('status', { type: () => String, nullable: true }) status?: string,
   ) {
-    return this.bookingsService.getServiceBookings(page, pageSize, status);
+    return this.bookingsService.getServiceBookings({ page, pageSize, status });
   }
 
   @Query(() => ServiceBookingConnection, { name: 'getServiceBookingsByClient' })
@@ -31,12 +31,12 @@ export class BookingsResolver {
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
     @Args('status', { type: () => String, nullable: true }) status?: string,
   ) {
-    return this.bookingsService.getServiceBookingsByClient(
+    return this.bookingsService.getServiceBookingsByClient({
       clientId,
       page,
       pageSize,
       status,
-    );
+    });
   }
 
   @Query(() => ServiceBookingConnection, {
@@ -48,12 +48,12 @@ export class BookingsResolver {
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
     @Args('status', { type: () => String, nullable: true }) status?: string,
   ) {
-    return this.bookingsService.getServiceBookingsByProvider(
+    return this.bookingsService.getServiceBookingsByProvider({
       providerId,
       page,
       pageSize,
       status,
-    );
+    });
   }
 
   @Query(() => ServiceBookingConnection, {
@@ -64,11 +64,11 @@ export class BookingsResolver {
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
   ) {
-    return this.bookingsService.getServiceBookingsByService(
-      parseInt(serviceId, 10),
+    return this.bookingsService.getServiceBookingsByService({
+      serviceId: parseInt(serviceId, 10),
       page,
       pageSize,
-    );
+    });
   }
 
   @Mutation(() => ServiceBooking)
@@ -87,11 +87,11 @@ export class BookingsResolver {
     @Args('cancelledBy', { type: () => String }) cancelledBy: string,
     @Args('reason', { type: () => String }) reason: string,
   ) {
-    return this.bookingsService.cancelServiceBooking(
-      parseInt(id, 10),
+    return this.bookingsService.cancelServiceBooking({
+      id: parseInt(id, 10),
       cancelledBy,
       reason,
-    );
+    });
   }
 
   @Mutation(() => ServiceBooking)

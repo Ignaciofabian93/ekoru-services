@@ -55,7 +55,10 @@ export class ServiceCategoryResolver {
       `Query: getServiceCategoryBySlug - slug: ${slug}, language: ${language}`,
     );
     context.language = language;
-    return this.serviceCategoryService.getServiceCategoryBySlug(slug, language);
+    return this.serviceCategoryService.getServiceCategoryBySlug({
+      slug,
+      language,
+    });
   }
 
   /**
@@ -83,11 +86,11 @@ export class ServiceCategoryResolver {
 
     context.language = language;
 
-    const categories = await this.serviceCategoryService.getServiceCategories(
+    const categories = await this.serviceCategoryService.getServiceCategories({
       limit,
       offset,
       language,
-    );
+    });
 
     // Prime translation cache to avoid N+1 on translation ResolveField
     if (categories.length > 0) {

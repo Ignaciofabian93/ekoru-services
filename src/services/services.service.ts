@@ -112,7 +112,15 @@ export class ServicesService {
     }
   }
 
-  async getServices(page: number, pageSize: number, isActive?: boolean) {
+  async getServices({
+    page,
+    pageSize,
+    isActive,
+  }: {
+    page: number;
+    pageSize: number;
+    isActive?: boolean;
+  }) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
 
@@ -159,12 +167,17 @@ export class ServicesService {
     }
   }
 
-  async getServicesBySeller(
-    sellerId: string,
-    page: number,
-    pageSize: number,
-    isActive?: boolean,
-  ) {
+  async getServicesBySeller({
+    sellerId,
+    page,
+    pageSize,
+    isActive,
+  }: {
+    sellerId: string;
+    page: number;
+    pageSize: number;
+    isActive?: boolean;
+  }) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
 
@@ -217,12 +230,17 @@ export class ServicesService {
     }
   }
 
-  async getServicesBySubCategory(
-    subcategoryId: number,
-    page: number,
-    pageSize: number,
-    isActive?: boolean,
-  ) {
+  async getServicesBySubCategory({
+    subcategoryId,
+    page,
+    pageSize,
+    isActive,
+  }: {
+    subcategoryId: number;
+    page: number;
+    pageSize: number;
+    isActive?: boolean;
+  }) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
 
@@ -278,12 +296,17 @@ export class ServicesService {
     }
   }
 
-  async getServicesByPricingType(
-    pricingType: ServicePricing,
-    page: number,
-    pageSize: number,
-    isActive?: boolean,
-  ) {
+  async getServicesByPricingType({
+    pricingType,
+    page,
+    pageSize,
+    isActive,
+  }: {
+    pricingType: ServicePricing;
+    page: number;
+    pageSize: number;
+    isActive?: boolean;
+  }) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
 

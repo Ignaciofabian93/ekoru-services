@@ -62,7 +62,11 @@ describe('ReviewsService', () => {
       mockPrismaService.serviceReview.count.mockResolvedValue(1);
       mockPrismaService.serviceReview.findMany.mockResolvedValue(mockReviews);
 
-      const result = await service.getServiceReviews(1, 1, 10);
+      const result = await service.getServiceReviews({
+        serviceId: 1,
+        page: 1,
+        pageSize: 10,
+      });
 
       expect(mockPrismaService.serviceReview.count).toHaveBeenCalledWith({
         where: { serviceId: 1 },
@@ -89,7 +93,11 @@ describe('ReviewsService', () => {
       mockPrismaService.serviceReview.count.mockResolvedValue(0);
       mockPrismaService.serviceReview.findMany.mockResolvedValue([]);
 
-      const result = await service.getServiceReviews(999, 1, 10);
+      const result = await service.getServiceReviews({
+        serviceId: 999,
+        page: 1,
+        pageSize: 10,
+      });
 
       expect(result.nodes).toHaveLength(0);
       expect(result.pageInfo.totalCount).toBe(0);
@@ -99,7 +107,7 @@ describe('ReviewsService', () => {
       mockPrismaService.serviceReview.count.mockResolvedValue(20);
       mockPrismaService.serviceReview.findMany.mockResolvedValue(mockReviews);
 
-      await service.getServiceReviews(1, 2, 5);
+      await service.getServiceReviews({ serviceId: 1, page: 2, pageSize: 5 });
 
       expect(mockPrismaService.serviceReview.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -114,7 +122,9 @@ describe('ReviewsService', () => {
         new Error('Database error'),
       );
 
-      await expect(service.getServiceReviews(1, 1, 10)).rejects.toThrow(
+      await expect(
+        service.getServiceReviews({ serviceId: 1, page: 1, pageSize: 10 }),
+      ).rejects.toThrow(
         new InternalServerError('Error al obtener las reseñas del servicio'),
       );
     });
@@ -136,11 +146,11 @@ describe('ReviewsService', () => {
       mockPrismaService.serviceReview.count.mockResolvedValue(2);
       mockPrismaService.serviceReview.findMany.mockResolvedValue(mockReviews);
 
-      const result = await service.getServiceReviewsByReviewer(
-        'reviewer-123',
-        1,
-        10,
-      );
+      const result = await service.getServiceReviewsByReviewer({
+        reviewerId: 'reviewer-123',
+        page: 1,
+        pageSize: 10,
+      });
 
       expect(mockPrismaService.serviceReview.count).toHaveBeenCalledWith({
         where: { reviewerId: 'reviewer-123' },
@@ -167,11 +177,11 @@ describe('ReviewsService', () => {
       mockPrismaService.serviceReview.count.mockResolvedValue(0);
       mockPrismaService.serviceReview.findMany.mockResolvedValue([]);
 
-      const result = await service.getServiceReviewsByReviewer(
-        'new-reviewer',
-        1,
-        10,
-      );
+      const result = await service.getServiceReviewsByReviewer({
+        reviewerId: 'new-reviewer',
+        page: 1,
+        pageSize: 10,
+      });
 
       expect(result.nodes).toHaveLength(0);
       expect(result.pageInfo.totalCount).toBe(0);
@@ -181,7 +191,11 @@ describe('ReviewsService', () => {
       mockPrismaService.serviceReview.count.mockResolvedValue(15);
       mockPrismaService.serviceReview.findMany.mockResolvedValue(mockReviews);
 
-      await service.getServiceReviewsByReviewer('reviewer-123', 3, 5);
+      await service.getServiceReviewsByReviewer({
+        reviewerId: 'reviewer-123',
+        page: 3,
+        pageSize: 5,
+      });
 
       expect(mockPrismaService.serviceReview.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -197,7 +211,11 @@ describe('ReviewsService', () => {
       );
 
       await expect(
-        service.getServiceReviewsByReviewer('reviewer-123', 1, 10),
+        service.getServiceReviewsByReviewer({
+          reviewerId: 'reviewer-123',
+          page: 1,
+          pageSize: 10,
+        }),
       ).rejects.toThrow(
         new InternalServerError('Error al obtener las reseñas del revisor'),
       );

@@ -120,7 +120,10 @@ describe('BookingsService', () => {
       mockPrismaService.serviceBooking.count.mockResolvedValue(1);
       mockPrismaService.serviceBooking.findMany.mockResolvedValue(mockBookings);
 
-      const result = await service.getServiceBookings(1, 10);
+      const result = await service.getServiceBookings({
+        page: 1,
+        pageSize: 10,
+      });
 
       expect(mockPrismaService.serviceBooking.count).toHaveBeenCalledWith({
         where: {},
@@ -139,7 +142,11 @@ describe('BookingsService', () => {
       mockPrismaService.serviceBooking.count.mockResolvedValue(1);
       mockPrismaService.serviceBooking.findMany.mockResolvedValue(mockBookings);
 
-      await service.getServiceBookings(1, 10, 'PENDING');
+      await service.getServiceBookings({
+        page: 1,
+        pageSize: 10,
+        status: 'PENDING',
+      });
 
       expect(mockPrismaService.serviceBooking.count).toHaveBeenCalledWith({
         where: { status: 'PENDING' },
@@ -157,7 +164,9 @@ describe('BookingsService', () => {
         new Error('Database error'),
       );
 
-      await expect(service.getServiceBookings(1, 10)).rejects.toThrow(
+      await expect(
+        service.getServiceBookings({ page: 1, pageSize: 10 }),
+      ).rejects.toThrow(
         new InternalServerError('Error al obtener las reservas'),
       );
     });
@@ -170,11 +179,11 @@ describe('BookingsService', () => {
       mockPrismaService.serviceBooking.count.mockResolvedValue(1);
       mockPrismaService.serviceBooking.findMany.mockResolvedValue(mockBookings);
 
-      const result = await service.getServiceBookingsByClient(
-        'client-123',
-        1,
-        10,
-      );
+      const result = await service.getServiceBookingsByClient({
+        clientId: 'client-123',
+        page: 1,
+        pageSize: 10,
+      });
 
       expect(mockPrismaService.serviceBooking.count).toHaveBeenCalledWith({
         where: { clientId: 'client-123' },
@@ -192,12 +201,12 @@ describe('BookingsService', () => {
       mockPrismaService.serviceBooking.count.mockResolvedValue(1);
       mockPrismaService.serviceBooking.findMany.mockResolvedValue(mockBookings);
 
-      await service.getServiceBookingsByClient(
-        'client-123',
-        1,
-        10,
-        'CONFIRMED',
-      );
+      await service.getServiceBookingsByClient({
+        clientId: 'client-123',
+        page: 1,
+        pageSize: 10,
+        status: 'CONFIRMED',
+      });
 
       expect(mockPrismaService.serviceBooking.count).toHaveBeenCalledWith({
         where: { clientId: 'client-123', status: 'CONFIRMED' },
@@ -216,7 +225,11 @@ describe('BookingsService', () => {
       );
 
       await expect(
-        service.getServiceBookingsByClient('client-123', 1, 10),
+        service.getServiceBookingsByClient({
+          clientId: 'client-123',
+          page: 1,
+          pageSize: 10,
+        }),
       ).rejects.toThrow(
         new InternalServerError('Error al obtener las reservas del cliente'),
       );
@@ -230,11 +243,11 @@ describe('BookingsService', () => {
       mockPrismaService.serviceBooking.count.mockResolvedValue(1);
       mockPrismaService.serviceBooking.findMany.mockResolvedValue(mockBookings);
 
-      const result = await service.getServiceBookingsByProvider(
-        'provider-456',
-        1,
-        10,
-      );
+      const result = await service.getServiceBookingsByProvider({
+        providerId: 'provider-456',
+        page: 1,
+        pageSize: 10,
+      });
 
       expect(mockPrismaService.serviceBooking.count).toHaveBeenCalledWith({
         where: { providerId: 'provider-456' },
@@ -252,12 +265,12 @@ describe('BookingsService', () => {
       mockPrismaService.serviceBooking.count.mockResolvedValue(1);
       mockPrismaService.serviceBooking.findMany.mockResolvedValue(mockBookings);
 
-      await service.getServiceBookingsByProvider(
-        'provider-456',
-        1,
-        10,
-        'COMPLETED',
-      );
+      await service.getServiceBookingsByProvider({
+        providerId: 'provider-456',
+        page: 1,
+        pageSize: 10,
+        status: 'COMPLETED',
+      });
 
       expect(mockPrismaService.serviceBooking.count).toHaveBeenCalledWith({
         where: { providerId: 'provider-456', status: 'COMPLETED' },
@@ -276,7 +289,11 @@ describe('BookingsService', () => {
       );
 
       await expect(
-        service.getServiceBookingsByProvider('provider-456', 1, 10),
+        service.getServiceBookingsByProvider({
+          providerId: 'provider-456',
+          page: 1,
+          pageSize: 10,
+        }),
       ).rejects.toThrow(
         new InternalServerError('Error al obtener las reservas del proveedor'),
       );
@@ -290,7 +307,11 @@ describe('BookingsService', () => {
       mockPrismaService.serviceBooking.count.mockResolvedValue(1);
       mockPrismaService.serviceBooking.findMany.mockResolvedValue(mockBookings);
 
-      const result = await service.getServiceBookingsByService(1, 1, 10);
+      const result = await service.getServiceBookingsByService({
+        serviceId: 1,
+        page: 1,
+        pageSize: 10,
+      });
 
       expect(mockPrismaService.serviceBooking.count).toHaveBeenCalledWith({
         where: { serviceId: 1 },
@@ -310,7 +331,11 @@ describe('BookingsService', () => {
       );
 
       await expect(
-        service.getServiceBookingsByService(1, 1, 10),
+        service.getServiceBookingsByService({
+          serviceId: 1,
+          page: 1,
+          pageSize: 10,
+        }),
       ).rejects.toThrow(
         new InternalServerError('Error al obtener las reservas del servicio'),
       );
@@ -498,11 +523,11 @@ describe('BookingsService', () => {
         cancelledBooking,
       );
 
-      const result = await service.cancelServiceBooking(
-        1,
-        'client-123',
-        'Changed plans',
-      );
+      const result = await service.cancelServiceBooking({
+        id: 1,
+        cancelledBy: 'client-123',
+        reason: 'Changed plans',
+      });
 
       expect(mockPrismaService.serviceBooking.update).toHaveBeenCalledWith({
         where: { id: 1 },
@@ -522,7 +547,11 @@ describe('BookingsService', () => {
       );
 
       await expect(
-        service.cancelServiceBooking(1, 'client-123', 'Changed plans'),
+        service.cancelServiceBooking({
+          id: 1,
+          cancelledBy: 'client-123',
+          reason: 'Changed plans',
+        }),
       ).rejects.toThrow(
         new InternalServerError('Error al cancelar la reserva'),
       );
