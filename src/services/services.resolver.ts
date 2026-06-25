@@ -1,8 +1,19 @@
-import { Resolver, Query, Mutation, Args, Int, ID } from '@nestjs/graphql';
+import {
+  Resolver,
+  Query,
+  Mutation,
+  Args,
+  Int,
+  ID,
+  ResolveField,
+  Parent,
+  Context,
+} from '@nestjs/graphql';
 import { ServicesService } from './services.service.js';
 import { Service, ServiceConnection } from './entities/index.js';
 import { AddServiceInput, UpdateServiceInput } from './dto/index.js';
 import { ServicePricing } from '../graphql/enums/index.js';
+import type { GraphQLContext } from '../types/index.js';
 
 @Resolver(() => Service)
 export class ServicesResolver {
@@ -90,5 +101,39 @@ export class ServicesResolver {
   @Mutation(() => Service)
   async toggleServiceActive(@Args('id', { type: () => ID }) id: string) {
     return this.servicesService.toggleServiceActive(parseInt(id, 10));
+  }
+
+  @Query(() => ServiceConnection, { name: 'getMyFavoriteServices' })
+  async getMyFavoriteServices(
+    @Context() ctx: GraphQLContext,
+    @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
+    @Args('pageSize', { type: () => Int, defaultValue: 12 }) pageSize: number,
+  ) {
+    return this.servicesService.getMyFavorites({
+      sellerId: ctx.sellerId,
+      page,
+      pageSize,
+    });
+  }
+
+  @Mutation(() => Service)
+  async toggleServiceLike(
+    @Args('serviceId', { type: () => ID }) serviceId: string,
+    @Context() ctx: GraphQLContext,
+  ) {
+    return this.servicesService.toggleServiceLike({
+      serviceId: parseInt(serviceId, 10),
+      sellerId: ctx.sellerId,
+    });
+  }
+
+  @ResolveField(() => Boolean, {
+    description: 'Whether the current seller has favorited this service',
+  })
+  async isLiked(
+    @Parent() service: Service,
+    @Context() ctx: GraphQLContext,
+  ): Promise<boolean> {
+    return ctx.loaders.serviceLikedByMe.load(service.id);
   }
 }

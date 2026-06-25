@@ -153,6 +153,7 @@ model Service {
   averageRating      Float?               @default(0)
   viewCount          Int                  @default(0)
   quotation          Quotation[]
+  likes              ServiceLike[]
   serviceCategory    ServiceSubCategory   @relation(fields: [subcategoryId], references: [id])
   serviceBooking     ServiceBooking[]
   serviceFAQ         ServiceFAQ[]
@@ -372,5 +373,19 @@ model ServiceProviderCredentials {
   @@index([insuranceExpiryDate])
   @@index([isLicenseVerified])
   @@index([licenseExpiryDate])
+}
+
+model ServiceLike {
+  id        Int      @id @default(autoincrement())
+  sellerId  String
+  serviceId Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, sellerId])
+  @@index([serviceId])
+  @@index([sellerId])
+  @@index([createdAt(sort: Desc)])
 }
 

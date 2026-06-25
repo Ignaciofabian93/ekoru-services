@@ -3,6 +3,7 @@ import { Language } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   NotFoundError,
+  UnauthorizedError,
   InternalServerError,
 } from '../common/exceptions/index.js';
 import {
@@ -599,6 +600,91 @@ export class ServicesService {
       }
       this.logger.error('Error al cambiar el estado del servicio:', error);
       throw new InternalServerError('Error al cambiar el estado del servicio');
+    }
+  }
+
+  /**
+   * Toggle the current seller's favorite mark on a service. Idempotent per
+   * (service, seller). Returns the service so `isLiked` re-resolves.
+   */
+  async toggleServiceLike({
+    serviceId,
+    sellerId,
+  }: {
+    serviceId: number;
+    sellerId?: string;
+  }) {
+    if (!sellerId) {
+      throw new UnauthorizedError('No autorizado');
+    }
+
+    const service = await this.prisma.service.findUnique({
+      where: { id: serviceId },
+    });
+
+    if (!service) {
+      throw new NotFoundError('Servicio no encontrado');
+    }
+
+    try {
+      const existing = await this.prisma.serviceLike.findUnique({
+        where: { serviceId_sellerId: { serviceId, sellerId } },
+        select: { id: true },
+      });
+
+      if (existing) {
+        await this.prisma.serviceLike.delete({ where: { id: existing.id } });
+      } else {
+        await this.prisma.serviceLike.create({ data: { serviceId, sellerId } });
+      }
+
+      return service;
+    } catch (error) {
+      this.logger.error('Error al cambiar el favorito del servicio:', error);
+      throw new InternalServerError('Error al actualizar favoritos');
+    }
+  }
+
+  /**
+   * Paginated list of the current seller's favorite services. Inactive services
+   * are excluded so unavailable favorites drop off automatically.
+   */
+  async getMyFavorites({
+    sellerId,
+    page,
+    pageSize,
+  }: {
+    sellerId?: string;
+    page: number;
+    pageSize: number;
+  }) {
+    if (!sellerId) {
+      throw new UnauthorizedError('No autorizado');
+    }
+
+    try {
+      const { skip, take } = calculatePrismaParams(page, pageSize);
+      const where = { sellerId, service: { isActive: true } };
+
+      const [likes, count] = await Promise.all([
+        this.prisma.serviceLike.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take,
+          include: { service: true },
+        }),
+        this.prisma.serviceLike.count({ where }),
+      ]);
+
+      const services = likes.map((like) => ({
+        ...like.service,
+        seller: { id: like.service.sellerId },
+      }));
+      return createPaginatedResponse(services, count, page, pageSize);
+    } catch (error) {
+      this.logger.error('Error al obtener servicios favoritos:', error);
+      throw new InternalServerError('Error al obtener servicios favoritos');
     }
   }
 }

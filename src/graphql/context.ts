@@ -1,3 +1,4 @@
+import DataLoader from 'dataloader';
 import { Request, Response } from 'express';
 import { ModuleRef } from '@nestjs/core';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -47,6 +48,18 @@ export function createGraphQLContext(
       serviceSubCategoryRepository.createServiceSubCategoryByCategoryLoader(),
     serviceSubCategoryTranslation:
       serviceSubCategoryRepository.createTranslationLoader(),
+
+    // Batches "did the current seller favorite these services?" lookups so
+    // grids resolve `isLiked` without an N+1. Anonymous → all false.
+    serviceLikedByMe: new DataLoader<number, boolean>(async (serviceIds) => {
+      if (!sellerId) return serviceIds.map(() => false);
+      const likes = await prisma.serviceLike.findMany({
+        where: { sellerId, serviceId: { in: [...serviceIds] } },
+        select: { serviceId: true },
+      });
+      const liked = new Set(likes.map((l) => l.serviceId));
+      return serviceIds.map((id) => liked.has(id));
+    }),
   };
 
   return {
