@@ -117,15 +117,22 @@ export class ServicesService {
     page,
     pageSize,
     isActive,
+    excludeSellerId,
   }: {
     page: number;
     pageSize: number;
     isActive?: boolean;
+    excludeSellerId?: string;
   }) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
 
-      const where = isActive !== undefined ? { isActive } : {};
+      // Hide the current user's own services from browsing; they remain visible
+      // to the seller in their profile via getServicesBySeller.
+      const where = {
+        ...(isActive !== undefined && { isActive }),
+        ...(excludeSellerId && { sellerId: { not: excludeSellerId } }),
+      };
       const count = await this.prisma.service.count({ where });
       const services = await this.prisma.service.findMany({
         where,
@@ -236,11 +243,13 @@ export class ServicesService {
     page,
     pageSize,
     isActive,
+    excludeSellerId,
   }: {
     subcategoryId: number;
     page: number;
     pageSize: number;
     isActive?: boolean;
+    excludeSellerId?: string;
   }) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
@@ -248,6 +257,7 @@ export class ServicesService {
       const where = {
         subcategoryId,
         ...(isActive !== undefined && { isActive }),
+        ...(excludeSellerId && { sellerId: { not: excludeSellerId } }),
       };
 
       const count = await this.prisma.service.count({ where });
@@ -302,11 +312,13 @@ export class ServicesService {
     page,
     pageSize,
     isActive,
+    excludeSellerId,
   }: {
     pricingType: ServicePricing;
     page: number;
     pageSize: number;
     isActive?: boolean;
+    excludeSellerId?: string;
   }) {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
@@ -314,6 +326,7 @@ export class ServicesService {
       const where = {
         pricingType,
         ...(isActive !== undefined && { isActive }),
+        ...(excludeSellerId && { sellerId: { not: excludeSellerId } }),
       };
 
       const count = await this.prisma.service.count({ where });

@@ -235,6 +235,21 @@ describe('ServicesService', () => {
       });
     });
 
+    it("should exclude the current seller's own services when logged in", async () => {
+      mockPrismaService.service.count.mockResolvedValue(0);
+      mockPrismaService.service.findMany.mockResolvedValue([]);
+
+      await service.getServices({
+        page: 1,
+        pageSize: 10,
+        excludeSellerId: 'seller-123',
+      });
+
+      expect(mockPrismaService.service.count).toHaveBeenCalledWith({
+        where: { sellerId: { not: 'seller-123' } },
+      });
+    });
+
     it('should throw InternalServerError on database error', async () => {
       mockPrismaService.service.count.mockRejectedValue(
         new Error('Database error'),

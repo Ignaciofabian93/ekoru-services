@@ -26,12 +26,18 @@ export class ServicesResolver {
 
   @Query(() => ServiceConnection, { name: 'getServices' })
   async getServices(
+    @Context() ctx: GraphQLContext,
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
     @Args('isActive', { type: () => Boolean, nullable: true })
     isActive?: boolean,
   ) {
-    return this.servicesService.getServices({ page, pageSize, isActive });
+    return this.servicesService.getServices({
+      page,
+      pageSize,
+      isActive,
+      excludeSellerId: ctx.sellerId,
+    });
   }
 
   @Query(() => ServiceConnection, { name: 'getServicesBySeller' })
@@ -53,6 +59,7 @@ export class ServicesResolver {
   @Query(() => ServiceConnection, { name: 'getServicesBySubCategory' })
   async getServicesBySubCategory(
     @Args('subcategoryId', { type: () => ID }) subcategoryId: string,
+    @Context() ctx: GraphQLContext,
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
     @Args('isActive', { type: () => Boolean, nullable: true })
@@ -63,6 +70,7 @@ export class ServicesResolver {
       page,
       pageSize,
       isActive,
+      excludeSellerId: ctx.sellerId,
     });
   }
 
@@ -70,6 +78,7 @@ export class ServicesResolver {
   async getServicesByPricingType(
     @Args('pricingType', { type: () => ServicePricing })
     pricingType: ServicePricing,
+    @Context() ctx: GraphQLContext,
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
     @Args('isActive', { type: () => Boolean, nullable: true })
@@ -80,6 +89,7 @@ export class ServicesResolver {
       page,
       pageSize,
       isActive,
+      excludeSellerId: ctx.sellerId,
     });
   }
 
