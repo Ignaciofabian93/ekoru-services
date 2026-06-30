@@ -97,17 +97,17 @@ model ServiceCategoryTranslation {
 }
 
 model ServiceSubCategory {
-  id                Int                            @id @default(autoincrement())
+  id                Int                             @id @default(autoincrement())
   serviceCategoryId Int
-  isActive          Boolean                        @default(true)
-  sortOrder         Int                            @default(0)
+  isActive          Boolean                         @default(true)
+  sortOrder         Int                             @default(0)
   featuredFrom      DateTime?
   featuredUntil     DateTime?
-  createdAt         DateTime                       @default(now())
-  updatedAt         DateTime                       @updatedAt
+  createdAt         DateTime                        @default(now())
+  updatedAt         DateTime                        @updatedAt
   services          Service[]
   serviceFAQ        ServiceFAQ[]
-  serviceCategory   ServiceCategory                @relation(fields: [serviceCategoryId], references: [id])
+  serviceCategory   ServiceCategory                 @relation(fields: [serviceCategoryId], references: [id])
   translations      ServiceSubCategoryTranslation[]
 
   @@index([serviceCategoryId])
@@ -116,7 +116,7 @@ model ServiceSubCategory {
 }
 
 model ServiceSubCategoryTranslation {
-  id                   Int                  @id @default(autoincrement())
+  id                   Int                @id @default(autoincrement())
   serviceSubCategoryId Int
   language             Language
   subCategory          String
@@ -125,9 +125,9 @@ model ServiceSubCategoryTranslation {
   metaTitle            String?
   metaDescription      String?
   metaKeywords         String[]
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
-  serviceSubCategory   ServiceSubCategory   @relation(fields: [serviceSubCategoryId], references: [id], onDelete: Cascade)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  serviceSubCategory   ServiceSubCategory @relation(fields: [serviceSubCategoryId], references: [id], onDelete: Cascade)
 
   @@unique([serviceSubCategoryId, language])
   @@unique([slug, language])
@@ -252,26 +252,26 @@ model Quotation {
 }
 
 model ServiceBooking {
-  id                                       Int             @id @default(autoincrement())
-  serviceId                                Int
-  clientId                                 String
-  providerId                               String
-  bookingDate                              DateTime        @default(now())
-  scheduledDate                            DateTime
-  scheduledTimeSlot                        String?
-  serviceLocation                          Json?
-  agreedPrice                              Float
-  paymentStatus                            PaymentStatus   @default(PENDING)
-  status                                   BookingStatus   @default(PENDING)
-  clientNotes                              String?
-  providerNotes                            String?
-  completedAt                              DateTime?
-  cancellationReason                       String?
-  cancelledBy                              String?
-  createdAt                                DateTime        @default(now())
-  updatedAt                                DateTime        @updatedAt
-  service                                  Service         @relation(fields: [serviceId], references: [id])
-  serviceReview                            ServiceReview[]
+  id                 Int             @id @default(autoincrement())
+  serviceId          Int
+  clientId           String
+  providerId         String
+  bookingDate        DateTime        @default(now())
+  scheduledDate      DateTime
+  scheduledTimeSlot  String?
+  serviceLocation    Json?
+  agreedPrice        Float
+  paymentStatus      PaymentStatus   @default(PENDING)
+  status             BookingStatus   @default(PENDING)
+  clientNotes        String?
+  providerNotes      String?
+  completedAt        DateTime?
+  cancellationReason String?
+  cancelledBy        String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  service            Service         @relation(fields: [serviceId], references: [id])
+  serviceReview      ServiceReview[]
 
   @@index([clientId, status])
   @@index([paymentStatus])
