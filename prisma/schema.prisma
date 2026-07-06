@@ -136,30 +136,37 @@ model ServiceSubCategoryTranslation {
 }
 
 model Service {
-  id                 Int                  @id @default(autoincrement())
-  name               String
-  description        String?
-  sellerId           String
-  pricingType        ServicePricing       @default(QUOTATION)
-  basePrice          Float?
-  priceRange         String?
-  duration           Int?
-  isActive           Boolean              @default(true)
-  images             String[]
-  tags               String[]
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-  subcategoryId      Int
-  averageRating      Float?               @default(0)
-  viewCount          Int                  @default(0)
-  quotation          Quotation[]
-  likes              ServiceLike[]
-  serviceCategory    ServiceSubCategory   @relation(fields: [subcategoryId], references: [id])
-  serviceBooking     ServiceBooking[]
-  serviceFAQ         ServiceFAQ[]
-  serviceMedia       ServiceMedia[]
-  servicePackageItem ServicePackageItem[]
-  serviceReview      ServiceReview[]
+  id                    Int                  @id @default(autoincrement())
+  name                  String
+  description           String?
+  sellerId              String
+  pricingType           ServicePricing       @default(QUOTATION)
+  basePrice             Float?
+  priceRange            String?
+  duration              Int?
+  isActive              Boolean              @default(true)
+  images                String[]
+  tags                  String[]
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  subcategoryId         Int
+  averageRating         Float?               @default(0)
+  viewCount             Int                  @default(0)
+  availabilitySchedule  Json?
+  isCurrentlyAvailable  Boolean?             @default(true)
+  maxConcurrentBookings Int?
+  advanceBookingDays    Int?
+  serviceRadius         Int?
+  serviceLocations      Json?
+  isRemoteService       Boolean?             @default(false)
+  quotation             Quotation[]
+  likes                 ServiceLike[]
+  serviceCategory       ServiceSubCategory   @relation(fields: [subcategoryId], references: [id])
+  serviceBooking        ServiceBooking[]
+  serviceFAQ            ServiceFAQ[]
+  serviceMedia          ServiceMedia[]
+  servicePackageItem    ServicePackageItem[]
+  serviceReview         ServiceReview[]
 
   @@index([subcategoryId])
   @@index([isActive])

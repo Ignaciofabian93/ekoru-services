@@ -12,6 +12,36 @@ import {
 import { AddServiceInput, UpdateServiceInput } from './dto/index.js';
 import { ServicePricing } from '../graphql/enums/index.js';
 
+/**
+ * Scalar columns returned for a Service across every read/write method. Kept in
+ * one place so a newly added column surfaces everywhere at once instead of
+ * silently resolving to `null` because a `select` block was missed. Relation and
+ * aggregate selections (`serviceReview`, `_count`) are added per-query.
+ */
+const serviceSelect = {
+  id: true,
+  name: true,
+  description: true,
+  sellerId: true,
+  subcategoryId: true,
+  pricingType: true,
+  basePrice: true,
+  priceRange: true,
+  duration: true,
+  isActive: true,
+  images: true,
+  tags: true,
+  createdAt: true,
+  updatedAt: true,
+  availabilitySchedule: true,
+  isCurrentlyAvailable: true,
+  maxConcurrentBookings: true,
+  advanceBookingDays: true,
+  serviceRadius: true,
+  serviceLocations: true,
+  isRemoteService: true,
+} as const;
+
 @Injectable()
 export class ServicesService {
   private readonly logger = new Logger(ServicesService.name);
@@ -23,20 +53,7 @@ export class ServicesService {
       const service = await this.prisma.service.findUnique({
         where: { id },
         select: {
-          id: true,
-          name: true,
-          description: true,
-          sellerId: true,
-          subcategoryId: true,
-          pricingType: true,
-          basePrice: true,
-          priceRange: true,
-          duration: true,
-          isActive: true,
-          images: true,
-          tags: true,
-          createdAt: true,
-          updatedAt: true,
+          ...serviceSelect,
           serviceReview: {
             select: {
               id: true,
@@ -105,20 +122,7 @@ export class ServicesService {
         skip,
         take,
         select: {
-          id: true,
-          name: true,
-          description: true,
-          sellerId: true,
-          subcategoryId: true,
-          pricingType: true,
-          basePrice: true,
-          priceRange: true,
-          duration: true,
-          isActive: true,
-          images: true,
-          tags: true,
-          createdAt: true,
-          updatedAt: true,
+          ...serviceSelect,
           _count: {
             select: {
               serviceReview: true,
@@ -166,20 +170,7 @@ export class ServicesService {
         skip,
         take,
         select: {
-          id: true,
-          name: true,
-          description: true,
-          sellerId: true,
-          subcategoryId: true,
-          pricingType: true,
-          basePrice: true,
-          priceRange: true,
-          duration: true,
-          isActive: true,
-          images: true,
-          tags: true,
-          createdAt: true,
-          updatedAt: true,
+          ...serviceSelect,
           _count: {
             select: {
               serviceReview: true,
@@ -232,20 +223,7 @@ export class ServicesService {
         skip,
         take,
         select: {
-          id: true,
-          name: true,
-          description: true,
-          sellerId: true,
-          subcategoryId: true,
-          pricingType: true,
-          basePrice: true,
-          priceRange: true,
-          duration: true,
-          isActive: true,
-          images: true,
-          tags: true,
-          createdAt: true,
-          updatedAt: true,
+          ...serviceSelect,
           _count: {
             select: {
               serviceReview: true,
@@ -301,20 +279,7 @@ export class ServicesService {
         skip,
         take,
         select: {
-          id: true,
-          name: true,
-          description: true,
-          sellerId: true,
-          subcategoryId: true,
-          pricingType: true,
-          basePrice: true,
-          priceRange: true,
-          duration: true,
-          isActive: true,
-          images: true,
-          tags: true,
-          createdAt: true,
-          updatedAt: true,
+          ...serviceSelect,
           _count: {
             select: {
               serviceReview: true,
@@ -357,23 +322,17 @@ export class ServicesService {
           tags: input.tags || [],
           sellerId: input.sellerId,
           isActive: input.isActive ?? true,
+          availabilitySchedule: input.availabilitySchedule,
+          isCurrentlyAvailable: input.isCurrentlyAvailable,
+          maxConcurrentBookings: input.maxConcurrentBookings,
+          advanceBookingDays: input.advanceBookingDays,
+          serviceRadius: input.serviceRadius,
+          serviceLocations: input.serviceLocations,
+          isRemoteService: input.isRemoteService,
           updatedAt: new Date(),
         },
         select: {
-          id: true,
-          name: true,
-          description: true,
-          sellerId: true,
-          subcategoryId: true,
-          pricingType: true,
-          basePrice: true,
-          priceRange: true,
-          duration: true,
-          isActive: true,
-          images: true,
-          tags: true,
-          createdAt: true,
-          updatedAt: true,
+          ...serviceSelect,
         },
       });
 
@@ -406,22 +365,30 @@ export class ServicesService {
           ...(input.images && { images: input.images }),
           ...(input.tags && { tags: input.tags }),
           ...(input.isActive !== undefined && { isActive: input.isActive }),
+          ...(input.availabilitySchedule !== undefined && {
+            availabilitySchedule: input.availabilitySchedule,
+          }),
+          ...(input.isCurrentlyAvailable !== undefined && {
+            isCurrentlyAvailable: input.isCurrentlyAvailable,
+          }),
+          ...(input.maxConcurrentBookings !== undefined && {
+            maxConcurrentBookings: input.maxConcurrentBookings,
+          }),
+          ...(input.advanceBookingDays !== undefined && {
+            advanceBookingDays: input.advanceBookingDays,
+          }),
+          ...(input.serviceRadius !== undefined && {
+            serviceRadius: input.serviceRadius,
+          }),
+          ...(input.serviceLocations !== undefined && {
+            serviceLocations: input.serviceLocations,
+          }),
+          ...(input.isRemoteService !== undefined && {
+            isRemoteService: input.isRemoteService,
+          }),
         },
         select: {
-          id: true,
-          name: true,
-          description: true,
-          sellerId: true,
-          subcategoryId: true,
-          pricingType: true,
-          basePrice: true,
-          priceRange: true,
-          duration: true,
-          isActive: true,
-          images: true,
-          tags: true,
-          createdAt: true,
-          updatedAt: true,
+          ...serviceSelect,
           _count: {
             select: {
               serviceReview: true,
@@ -447,20 +414,7 @@ export class ServicesService {
       const service = await this.prisma.service.delete({
         where: { id },
         select: {
-          id: true,
-          name: true,
-          description: true,
-          sellerId: true,
-          subcategoryId: true,
-          pricingType: true,
-          basePrice: true,
-          priceRange: true,
-          duration: true,
-          isActive: true,
-          images: true,
-          tags: true,
-          createdAt: true,
-          updatedAt: true,
+          ...serviceSelect,
         },
       });
 
@@ -491,20 +445,7 @@ export class ServicesService {
         where: { id },
         data: { isActive: !currentService.isActive },
         select: {
-          id: true,
-          name: true,
-          description: true,
-          sellerId: true,
-          subcategoryId: true,
-          pricingType: true,
-          basePrice: true,
-          priceRange: true,
-          duration: true,
-          isActive: true,
-          images: true,
-          tags: true,
-          createdAt: true,
-          updatedAt: true,
+          ...serviceSelect,
           _count: {
             select: {
               serviceReview: true,

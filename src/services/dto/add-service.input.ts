@@ -7,7 +7,7 @@ import {
   IsArray,
   IsBoolean,
   IsEnum,
-  IsJSON,
+  IsObject,
 } from 'class-validator';
 import { ServicePricing } from '../../graphql/enums/index.js';
 import { GraphQLJSON } from 'graphql-scalars';
@@ -69,7 +69,7 @@ export class AddServiceInput {
   // Availability and scheduling
   @Field(() => GraphQLJSON, { nullable: true })
   @IsOptional()
-  @IsJSON()
+  @IsObject()
   availabilitySchedule?: any; // {mon: "9-5", tue: "9-5", ...}
 
   @Field(() => Boolean, { nullable: true })
@@ -95,7 +95,7 @@ export class AddServiceInput {
 
   @Field(() => GraphQLJSON, { nullable: true })
   @IsOptional()
-  @IsJSON()
+  @IsArray()
   serviceLocations?: any; // [{address, lat, lng, ...}]
 
   @Field(() => Boolean, { nullable: true })

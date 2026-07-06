@@ -34,6 +34,13 @@ describe('ServicesService', () => {
     tags: ['tag1', 'tag2'],
     createdAt: new Date('2025-12-20'),
     updatedAt: new Date('2025-12-23'),
+    availabilitySchedule: { mon: '09:00-17:00' },
+    isCurrentlyAvailable: true,
+    maxConcurrentBookings: 2,
+    advanceBookingDays: 30,
+    serviceRadius: 10,
+    serviceLocations: [{ address: 'Main St', lat: 1, lng: 2 }],
+    isRemoteService: false,
   };
 
   // `serviceCategory` is no longer flattened by ServicesService — it is filled
@@ -518,6 +525,41 @@ describe('ServicesService', () => {
       );
     });
 
+    it('should persist availability and location fields when provided', async () => {
+      const inputWithAvailability: AddServiceInput = {
+        ...input,
+        availabilitySchedule: { mon: '09:00-17:00' },
+        isCurrentlyAvailable: true,
+        maxConcurrentBookings: 3,
+        advanceBookingDays: 14,
+        serviceRadius: 25,
+        serviceLocations: [{ address: 'Office', lat: 1, lng: 2 }],
+        isRemoteService: false,
+      };
+
+      mockPrismaService.service.create.mockResolvedValue({
+        ...mockService,
+        ...inputWithAvailability,
+        id: 3,
+      });
+
+      await service.addService(inputWithAvailability);
+
+      expect(mockPrismaService.service.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            availabilitySchedule: { mon: '09:00-17:00' },
+            isCurrentlyAvailable: true,
+            maxConcurrentBookings: 3,
+            advanceBookingDays: 14,
+            serviceRadius: 25,
+            serviceLocations: [{ address: 'Office', lat: 1, lng: 2 }],
+            isRemoteService: false,
+          }),
+        }),
+      );
+    });
+
     it('should throw InternalServerError on database error', async () => {
       mockPrismaService.service.create.mockRejectedValue(
         new Error('Database error'),
@@ -608,6 +650,37 @@ describe('ServicesService', () => {
 
       const callData = mockPrismaService.service.update.mock.calls[0][0].data;
       expect(callData.basePrice).toBe(0);
+    });
+
+    it('should update availability and location fields, keeping falsy values', async () => {
+      const availabilityInput: UpdateServiceInput = {
+        id: '1',
+        availabilitySchedule: { tue: '10:00-16:00' },
+        isCurrentlyAvailable: false,
+        maxConcurrentBookings: 0,
+        advanceBookingDays: 0,
+        serviceRadius: 0,
+        serviceLocations: [],
+        isRemoteService: true,
+      };
+
+      mockPrismaService.service.update.mockResolvedValue({
+        ...mockService,
+        _count: { serviceReview: 0 },
+      });
+
+      await service.updateService(availabilityInput);
+
+      const callData = mockPrismaService.service.update.mock.calls[0][0].data;
+      expect(callData).toEqual({
+        availabilitySchedule: { tue: '10:00-16:00' },
+        isCurrentlyAvailable: false,
+        maxConcurrentBookings: 0,
+        advanceBookingDays: 0,
+        serviceRadius: 0,
+        serviceLocations: [],
+        isRemoteService: true,
+      });
     });
 
     it('should throw InternalServerError on database error', async () => {
