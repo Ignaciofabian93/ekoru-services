@@ -11,6 +11,7 @@ import {
 } from '@nestjs/graphql';
 import { ServicesService } from './services.service.js';
 import { Service, ServiceConnection } from './entities/index.js';
+import { ServiceSubCategory } from '../catalog-v2/entities/index.js';
 import { AddServiceInput, UpdateServiceInput } from './dto/index.js';
 import { ServicePricing } from '../graphql/enums/index.js';
 import type { GraphQLContext } from '../types/index.js';
@@ -145,5 +146,19 @@ export class ServicesResolver {
     @Context() ctx: GraphQLContext,
   ): Promise<boolean> {
     return ctx.loaders.serviceLikedByMe.load(service.id);
+  }
+
+  /**
+   * Resolves the service's sub-category. Batched by `subcategoryId` via a
+   * DataLoader so a grid of services hits the DB once. Localized fields are
+   * filled in by the `ServiceSubCategory.translation` field resolver.
+   */
+  @ResolveField(() => ServiceSubCategory, { nullable: true })
+  async serviceCategory(
+    @Parent() service: Service,
+    @Context() ctx: GraphQLContext,
+  ): Promise<ServiceSubCategory | null> {
+    if (!service.subcategoryId) return null;
+    return ctx.loaders.serviceSubCategoryById.load(service.subcategoryId);
   }
 }

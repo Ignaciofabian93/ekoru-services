@@ -46,6 +46,8 @@ export function createGraphQLContext(
       serviceCategoryRepository.createServiceCategoryLoader(),
     serviceSubCategories:
       serviceSubCategoryRepository.createServiceSubCategoryByCategoryLoader(),
+    serviceSubCategoryById:
+      serviceSubCategoryRepository.createServiceSubCategoryByIdLoader(),
     serviceSubCategoryTranslation:
       serviceSubCategoryRepository.createTranslationLoader(),
 

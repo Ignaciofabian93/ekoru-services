@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Language } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   NotFoundError,
@@ -38,27 +37,6 @@ export class ServicesService {
           tags: true,
           createdAt: true,
           updatedAt: true,
-          serviceCategory: {
-            select: {
-              id: true,
-              serviceCategoryId: true,
-              translations: {
-                where: { language: Language.ES },
-                select: { subCategory: true, href: true },
-                take: 1,
-              },
-              serviceCategory: {
-                select: {
-                  id: true,
-                  translations: {
-                    where: { language: Language.ES },
-                    select: { category: true },
-                    take: 1,
-                  },
-                },
-              },
-            },
-          },
           serviceReview: {
             select: {
               id: true,
@@ -83,23 +61,11 @@ export class ServicesService {
             ) / service.serviceReview.length
           : 0;
 
-      const { serviceCategory: rawSC, serviceReview, ...restService } = service;
+      // `serviceCategory` and `seller` are populated by their field resolvers
+      // (ServicesResolver.serviceCategory / the federated Seller reference).
+      const { serviceReview, ...restService } = service;
       return {
         ...restService,
-        serviceCategory: rawSC
-          ? {
-              id: rawSC.id,
-              serviceCategoryId: rawSC.serviceCategoryId,
-              subCategory: rawSC.translations[0]?.subCategory,
-              href: rawSC.translations[0]?.href,
-              serviceCategory: rawSC.serviceCategory
-                ? {
-                    id: rawSC.serviceCategory.id,
-                    category: rawSC.serviceCategory.translations[0]?.category,
-                  }
-                : null,
-            }
-          : null,
         seller: { id: service.sellerId },
         averageRating,
         reviewCount: serviceReview.length,
@@ -408,29 +374,11 @@ export class ServicesService {
           tags: true,
           createdAt: true,
           updatedAt: true,
-          serviceCategory: {
-            select: {
-              id: true,
-              serviceCategoryId: true,
-              translations: {
-                where: { language: Language.ES },
-                select: { subCategory: true },
-                take: 1,
-              },
-            },
-          },
         },
       });
 
       return {
         ...service,
-        serviceCategory: service.serviceCategory
-          ? {
-              id: service.serviceCategory.id,
-              serviceCategoryId: service.serviceCategory.serviceCategoryId,
-              subCategory: service.serviceCategory.translations[0]?.subCategory,
-            }
-          : null,
         seller: { id: service.sellerId },
         averageRating: 0,
         reviewCount: 0,
@@ -474,17 +422,6 @@ export class ServicesService {
           tags: true,
           createdAt: true,
           updatedAt: true,
-          serviceCategory: {
-            select: {
-              id: true,
-              serviceCategoryId: true,
-              translations: {
-                where: { language: Language.ES },
-                select: { subCategory: true },
-                take: 1,
-              },
-            },
-          },
           _count: {
             select: {
               serviceReview: true,
@@ -495,13 +432,6 @@ export class ServicesService {
 
       return {
         ...service,
-        serviceCategory: service.serviceCategory
-          ? {
-              id: service.serviceCategory.id,
-              serviceCategoryId: service.serviceCategory.serviceCategoryId,
-              subCategory: service.serviceCategory.translations[0]?.subCategory,
-            }
-          : null,
         seller: { id: service.sellerId },
         averageRating: 0,
         reviewCount: service._count.serviceReview,
@@ -575,17 +505,6 @@ export class ServicesService {
           tags: true,
           createdAt: true,
           updatedAt: true,
-          serviceCategory: {
-            select: {
-              id: true,
-              serviceCategoryId: true,
-              translations: {
-                where: { language: Language.ES },
-                select: { subCategory: true },
-                take: 1,
-              },
-            },
-          },
           _count: {
             select: {
               serviceReview: true,
@@ -596,13 +515,6 @@ export class ServicesService {
 
       return {
         ...service,
-        serviceCategory: service.serviceCategory
-          ? {
-              id: service.serviceCategory.id,
-              serviceCategoryId: service.serviceCategory.serviceCategoryId,
-              subCategory: service.serviceCategory.translations[0]?.subCategory,
-            }
-          : null,
         seller: { id: service.sellerId },
         averageRating: 0,
         reviewCount: service._count.serviceReview,

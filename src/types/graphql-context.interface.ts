@@ -42,6 +42,7 @@ export interface GraphQLContext {
     >;
     serviceCategoryById: DataLoader<number, ServiceCategory | null>;
     serviceSubCategories: DataLoader<number, ServiceSubCategory[]>;
+    serviceSubCategoryById: DataLoader<number, ServiceSubCategory | null>;
     serviceSubCategoryTranslation: DataLoader<
       string,
       ServiceSubCategoryTranslation | null

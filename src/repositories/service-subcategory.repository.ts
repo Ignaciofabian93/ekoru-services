@@ -57,8 +57,8 @@ export class ServiceSubCategoryRepository {
           return compositeKeys.map((key) => translationMap.get(key) || null);
         } catch (error) {
           this.logger.error(
-            `Error loading service sub-category translations: ${error.message}`,
-            error.stack,
+            'Error loading service sub-category translations',
+            error,
           );
           throw error;
         }
@@ -104,8 +104,46 @@ export class ServiceSubCategoryRepository {
           return serviceCategoryIds.map((id) => subCategoryMap.get(id) || []);
         } catch (error) {
           this.logger.error(
-            `Error loading service sub-categories by category IDs: ${error.message}`,
-            error.stack,
+            'Error loading service sub-categories by category IDs',
+            error,
+          );
+          throw error;
+        }
+      },
+    );
+  }
+
+  /**
+   * Creates a DataLoader for service sub-categories by their own ID.
+   *
+   * Batches the per-service `Service.serviceCategory` lookups on a grid into a
+   * single query, keeping the field resolver free of N+1.
+   *
+   * @example
+   * const loader = createServiceSubCategoryByIdLoader();
+   * const subCategory = await loader.load(26);
+   */
+  createServiceSubCategoryByIdLoader(): DataLoader<
+    number,
+    ServiceSubCategory | null
+  > {
+    return new DataLoader<number, ServiceSubCategory | null>(
+      async (ids: readonly number[]) => {
+        try {
+          const subCategories = await this.prisma.serviceSubCategory.findMany({
+            where: { id: { in: [...ids] } },
+          });
+
+          const subCategoryMap = new Map<number, ServiceSubCategory>();
+          subCategories.forEach((subCategory) => {
+            subCategoryMap.set(subCategory.id, subCategory);
+          });
+
+          return ids.map((id) => subCategoryMap.get(id) || null);
+        } catch (error) {
+          this.logger.error(
+            'Error loading service sub-categories by IDs',
+            error,
           );
           throw error;
         }
@@ -132,10 +170,7 @@ export class ServiceSubCategoryRepository {
 
       return translation?.serviceSubCategory || null;
     } catch (error) {
-      this.logger.error(
-        `Error finding service sub-category by slug: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error('Error finding service sub-category by slug', error);
       throw error;
     }
   }
@@ -152,10 +187,7 @@ export class ServiceSubCategoryRepository {
         skip: offset,
       });
     } catch (error) {
-      this.logger.error(
-        `Error finding all service sub-categories: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error('Error finding all service sub-categories', error);
       throw error;
     }
   }
@@ -173,8 +205,8 @@ export class ServiceSubCategoryRepository {
       });
     } catch (error) {
       this.logger.error(
-        `Error finding service sub-categories by category ID: ${error.message}`,
-        error.stack,
+        'Error finding service sub-categories by category ID',
+        error,
       );
       throw error;
     }
