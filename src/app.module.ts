@@ -12,6 +12,8 @@ import { ModuleRef } from '@nestjs/core';
 import { GraphQLJSON } from 'graphql-scalars';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { CatalogV2Module as ServiceCatalogModule } from './catalog-v2/catalog-v2.module.js';
+import { ServiceCategoriesModule } from './serviceCategories/index.js';
+import { ServiceSubCategoriesModule } from './serviceSubCategories/index.js';
 import { ServicesModule } from './services/services.module.js';
 import { QuotationsModule } from './quotations/quotations.module.js';
 import { ReviewsModule } from './reviews/reviews.module.js';
@@ -74,8 +76,16 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
     // Database
     PrismaModule,
 
-    // Feature modules
+    // Service catalog (web menu) queries only
     ServiceCatalogModule,
+
+    // Service categories subdomain
+    ServiceCategoriesModule,
+
+    // Service sub categories subdomain
+    ServiceSubCategoriesModule,
+
+    // Feature modules
     ServicesModule,
     QuotationsModule,
     ReviewsModule,

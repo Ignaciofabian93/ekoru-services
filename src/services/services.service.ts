@@ -251,6 +251,80 @@ export class ServicesService {
     }
   }
 
+  /**
+   * Get services by Service Category ID.
+   * Returns all services from all sub categories under this category.
+   */
+  async getServicesByCategory({
+    categoryId,
+    page,
+    pageSize,
+    isActive,
+    excludeSellerId,
+  }: {
+    categoryId: number;
+    page: number;
+    pageSize: number;
+    isActive?: boolean;
+    excludeSellerId?: string;
+  }) {
+    try {
+      // First, get all sub category IDs under this service category
+      const subCategories = await this.prisma.serviceSubCategory.findMany({
+        where: {
+          serviceCategoryId: categoryId,
+          isActive: true,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      const subCategoryIds = subCategories.map((sub) => sub.id);
+
+      if (subCategoryIds.length === 0) {
+        return createPaginatedResponse([], 0, page, pageSize);
+      }
+
+      const { skip, take } = calculatePrismaParams(page, pageSize);
+
+      const where = {
+        subcategoryId: { in: subCategoryIds },
+        ...(isActive !== undefined && { isActive }),
+        ...(excludeSellerId && { sellerId: { not: excludeSellerId } }),
+      };
+
+      const count = await this.prisma.service.count({ where });
+      const services = await this.prisma.service.findMany({
+        where,
+        skip,
+        take,
+        select: {
+          ...serviceSelect,
+          _count: {
+            select: {
+              serviceReview: true,
+            },
+          },
+        },
+      });
+
+      const mappedServices = services.map((service) => ({
+        ...service,
+        seller: { id: service.sellerId },
+        reviewCount: service._count.serviceReview,
+        averageRating: 0,
+      }));
+
+      return createPaginatedResponse(mappedServices, count, page, pageSize);
+    } catch (error) {
+      this.logger.error('Error al obtener los servicios por categoría:', error);
+      throw new InternalServerError(
+        'Error al obtener los servicios por categoría',
+      );
+    }
+  }
+
   async getServicesByPricingType({
     pricingType,
     page,
