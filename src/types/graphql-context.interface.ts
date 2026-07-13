@@ -10,8 +10,8 @@ import type {
   ServiceSubCategory,
   ServiceSubCategoryTranslation,
 } from './service-subcategory.js';
-import type { ServiceCategoryRepository } from '../repositories/service-category.repository.js';
-import type { ServiceSubCategoryRepository } from '../repositories/service-subcategory.repository.js';
+import type { ServiceCategoryRepository } from '../serviceCategories/service-category.repository.js';
+import type { ServiceSubCategoryRepository } from '../serviceSubCategories/service-sub-category.repository.js';
 
 /**
  * GraphQL Context Interface

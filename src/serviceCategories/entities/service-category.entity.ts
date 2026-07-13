@@ -1,5 +1,5 @@
 import { ObjectType, Field, ID, Int, Directive } from '@nestjs/graphql';
-import { ServiceSubCategory } from './service-subcategory.entity.js';
+import { ServiceSubCategory } from '../../serviceSubCategories/entities/service-subcategory.entity.js';
 import { ServiceCategoryTranslation } from './service-category-translation.entity.js';
 
 @ObjectType()

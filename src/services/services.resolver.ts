@@ -11,7 +11,7 @@ import {
 } from '@nestjs/graphql';
 import { ServicesService } from './services.service.js';
 import { Service, ServiceConnection } from './entities/index.js';
-import { ServiceSubCategory } from '../catalog-v2/entities/index.js';
+import { ServiceSubCategory } from '../serviceSubCategories/entities/index.js';
 import { AddServiceInput, UpdateServiceInput } from './dto/index.js';
 import { ServicePricing } from '../graphql/enums/index.js';
 import type { GraphQLContext } from '../types/index.js';
