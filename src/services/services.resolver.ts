@@ -6,6 +6,7 @@ import {
   Int,
   ID,
   ResolveField,
+  ResolveReference,
   Parent,
   Context,
 } from '@nestjs/graphql';
@@ -136,6 +137,16 @@ export class ServicesResolver {
       serviceId: parseInt(serviceId, 10),
       sellerId: ctx.sellerId,
     });
+  }
+
+  /**
+   * Federation entity resolver: hydrates a Service that another subgraph
+   * referenced by key alone (e.g. a hit from ekoru-search). Without it the
+   * gateway can only hand back the id and every other field resolves to null.
+   */
+  @ResolveReference()
+  async resolveReference(reference: { __typename: string; id: string }) {
+    return this.servicesService.getService(parseInt(String(reference.id), 10));
   }
 
   @ResolveField(() => Boolean, {
