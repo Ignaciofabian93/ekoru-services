@@ -13,6 +13,7 @@ import { GraphQLJSON } from 'graphql-scalars';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { CatalogV2Module as ServiceCatalogModule } from './catalog-v2/catalog-v2.module.js';
 import { AdminCatalogModule } from './adminCatalog/index.js';
+import { AdminServicesModule } from './adminServices/index.js';
 import { ServiceCategoriesModule } from './serviceCategories/index.js';
 import { ServiceSubCategoriesModule } from './serviceSubCategories/index.js';
 import { ServicesModule } from './services/services.module.js';
@@ -82,6 +83,7 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 
     // Platform-admin catalog CRUD (raw reads + bulk upsert/XLSX)
     AdminCatalogModule,
+    AdminServicesModule,
 
     // Service categories subdomain
     ServiceCategoriesModule,
