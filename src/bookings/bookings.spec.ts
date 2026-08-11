@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BookingsService } from './bookings.service';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { UsersClient } from '../common/clients/index';
 import {
   NotFoundError,
   BadRequestError,
@@ -9,6 +11,7 @@ import {
 import { AddServiceBookingInput, UpdateServiceBookingInput } from './dto/index';
 
 describe('BookingsService', () => {
+  let mockUsersClient: { notify: jest.Mock };
   let service: BookingsService;
 
   const mockPrismaService = {
@@ -51,12 +54,21 @@ describe('BookingsService', () => {
   };
 
   beforeEach(async () => {
+    mockUsersClient = { notify: jest.fn().mockResolvedValue(true) };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BookingsService,
         {
           provide: PrismaService,
           useValue: mockPrismaService,
+        },
+        { provide: UsersClient, useValue: mockUsersClient },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn(() => 'https://app.ekoru.cl'),
+          },
         },
       ],
     }).compile();
@@ -591,6 +603,165 @@ describe('BookingsService', () => {
       await expect(service.completeServiceBooking(1)).rejects.toThrow(
         new InternalServerError('Error al completar la reserva'),
       );
+    });
+  });
+  describe('notifications', () => {
+    /**
+     * Notifications are deliberately fire-and-forget (`void this.notify(...)`),
+     * so the mutation resolves before they run. Flush pending work before
+     * asserting, rather than making the service await a notice it shouldn't
+     * wait on.
+     */
+    const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+    /** Who hears about a change is the whole point — assert the recipient. */
+    const notified = () =>
+      mockUsersClient.notify.mock.calls.map(
+        (c) =>
+          c[0] as {
+            sellerId: string;
+            type: string;
+            data: Record<string, unknown>;
+          },
+      );
+
+    beforeEach(() => {
+      mockPrismaService.service.findUnique.mockResolvedValue({
+        name: 'Reparación de bicicletas',
+      });
+    });
+
+    it('tells the provider when a client books', async () => {
+      mockPrismaService.service.findUnique.mockResolvedValue({
+        id: 1,
+        isActive: true,
+        name: 'Reparación de bicicletas',
+      });
+      mockPrismaService.serviceBooking.create.mockResolvedValue(mockBooking);
+
+      await service.addServiceBooking({
+        serviceId: 1,
+        clientId: 'client-123',
+        providerId: 'provider-456',
+        scheduledDate: new Date('2025-12-25'),
+        agreedPrice: 15000,
+      } as never);
+      await flush();
+
+      const calls = notified();
+      expect(calls).toHaveLength(1);
+      expect(calls[0]).toEqual(
+        expect.objectContaining({
+          sellerId: 'provider-456',
+          type: 'BOOKING_REQUEST',
+        }),
+      );
+      // The actor is the other party, so the copy reads "X booked …".
+      expect(calls[0].data.actorSellerId).toBe('client-123');
+    });
+
+    it('tells the client when the booking is confirmed', async () => {
+      mockPrismaService.serviceBooking.update.mockResolvedValue(mockBooking);
+
+      await service.updateServiceBooking({
+        id: '1',
+        status: 'CONFIRMED',
+      } as never);
+      await flush();
+
+      expect(notified()).toEqual([
+        expect.objectContaining({
+          sellerId: 'client-123',
+          type: 'BOOKING_CONFIRMED',
+        }),
+      ]);
+    });
+
+    it('says nothing when only the schedule changes', async () => {
+      mockPrismaService.serviceBooking.update.mockResolvedValue(mockBooking);
+
+      await service.updateServiceBooking({
+        id: '1',
+        scheduledTimeSlot: '11:00-12:00',
+      } as never);
+      await flush();
+
+      expect(mockUsersClient.notify).not.toHaveBeenCalled();
+    });
+
+    it('tells only the provider when the client cancels', async () => {
+      mockPrismaService.serviceBooking.update.mockResolvedValue(mockBooking);
+
+      await service.cancelServiceBooking({
+        id: 1,
+        cancelledBy: 'client-123',
+        reason: 'Ya no lo necesito',
+      });
+      await flush();
+
+      const calls = notified();
+      expect(calls).toHaveLength(1);
+      expect(calls[0].sellerId).toBe('provider-456');
+      expect(calls[0].type).toBe('BOOKING_CANCELLED');
+      expect(calls[0].data.note).toBe('Ya no lo necesito');
+    });
+
+    it('tells only the client when the provider cancels', async () => {
+      mockPrismaService.serviceBooking.update.mockResolvedValue(mockBooking);
+
+      await service.cancelServiceBooking({
+        id: 1,
+        cancelledBy: 'provider-456',
+        reason: 'Sin disponibilidad',
+      });
+      await flush();
+
+      const calls = notified();
+      expect(calls).toHaveLength(1);
+      expect(calls[0].sellerId).toBe('client-123');
+    });
+
+    it('tells both parties when the canceller is unknown', async () => {
+      mockPrismaService.serviceBooking.update.mockResolvedValue(mockBooking);
+
+      await service.cancelServiceBooking({
+        id: 1,
+        cancelledBy: '',
+        reason: 'Sistema',
+      });
+      await flush();
+
+      expect(
+        notified()
+          .map((c) => c.sellerId)
+          .sort(),
+      ).toEqual(['client-123', 'provider-456']);
+    });
+
+    it('tells the client when the service is completed', async () => {
+      mockPrismaService.serviceBooking.update.mockResolvedValue(mockBooking);
+
+      await service.completeServiceBooking(1);
+      await flush();
+
+      expect(notified()).toEqual([
+        expect.objectContaining({
+          sellerId: 'client-123',
+          type: 'BOOKING_COMPLETED',
+        }),
+      ]);
+    });
+
+    it('still completes the booking when notifying throws', async () => {
+      mockPrismaService.serviceBooking.update.mockResolvedValue(mockBooking);
+      mockUsersClient.notify.mockRejectedValue(new Error('users down'));
+
+      await expect(service.completeServiceBooking(1)).resolves.toEqual(
+        mockBooking,
+      );
+      // The helper swallows it; without that this would be an unhandled
+      // rejection and take the process down.
+      await flush();
     });
   });
 });

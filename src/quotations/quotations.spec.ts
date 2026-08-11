@@ -1,11 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { QuotationsService } from './quotations.service';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { UsersClient } from '../common/clients/index';
 import { NotFoundError, InternalServerError } from '../common/exceptions/index';
 import { AddQuotationInput, UpdateQuotationInput } from './dto/index';
 import { QuotationStatus } from '../graphql/enums/index';
 
 describe('QuotationsService', () => {
+  let mockUsersClient: { notify: jest.Mock };
   let service: QuotationsService;
 
   const mockPrismaService = {
@@ -48,12 +51,21 @@ describe('QuotationsService', () => {
   };
 
   beforeEach(async () => {
+    mockUsersClient = { notify: jest.fn().mockResolvedValue(true) };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         QuotationsService,
         {
           provide: PrismaService,
           useValue: mockPrismaService,
+        },
+        { provide: UsersClient, useValue: mockUsersClient },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn(() => 'https://app.ekoru.cl'),
+          },
         },
       ],
     }).compile();
@@ -761,6 +773,117 @@ describe('QuotationsService', () => {
       const result = await service.deleteQuotation(999);
 
       expect(result).toBe(false);
+    });
+  });
+  describe('notifications', () => {
+    /** Fire-and-forget, so flush before asserting the side effect. */
+    const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+    const notified = () =>
+      mockUsersClient.notify.mock.calls.map(
+        (c) =>
+          c[0] as {
+            sellerId: string;
+            type: string;
+            data: Record<string, unknown>;
+          },
+      );
+
+    it('tells the provider when a client requests a quote', async () => {
+      mockPrismaService.quotation.create.mockResolvedValue(mockQuotation);
+
+      await service.addQuotation({
+        serviceId: 1,
+        clientId: 'client-123',
+        providerId: 'provider-456',
+        title: 'Test Quotation',
+        description: 'desc',
+      } as never);
+      await flush();
+
+      const calls = notified();
+      expect(calls).toHaveLength(1);
+      expect(calls[0].sellerId).toBe('provider-456');
+      expect(calls[0].type).toBe('QUOTATION_REQUEST');
+      // The actor is the counterpart, so the copy reads "X requested …".
+      expect(calls[0].data.actorSellerId).toBe('client-123');
+    });
+
+    it('tells the client when the provider prices the quote', async () => {
+      mockPrismaService.quotation.update.mockResolvedValue(mockQuotation);
+
+      await service.updateQuotation({ id: '1', finalPrice: 750 } as never);
+      await flush();
+
+      expect(notified()).toEqual([
+        expect.objectContaining({
+          sellerId: 'client-123',
+          type: 'QUOTATION_RECEIVED',
+        }),
+      ]);
+    });
+
+    it('says nothing when the update carries no provider pricing', async () => {
+      mockPrismaService.quotation.update.mockResolvedValue(mockQuotation);
+
+      await service.updateQuotation({
+        id: '1',
+        clientNotes: 'extra context',
+      } as never);
+      await flush();
+
+      expect(mockUsersClient.notify).not.toHaveBeenCalled();
+    });
+
+    it('tells the provider when the client accepts', async () => {
+      mockPrismaService.quotation.update.mockResolvedValue(mockQuotation);
+
+      await service.acceptQuotation(1);
+      await flush();
+
+      expect(notified()).toEqual([
+        expect.objectContaining({
+          sellerId: 'provider-456',
+          type: 'QUOTATION_ACCEPTED',
+        }),
+      ]);
+    });
+
+    it('tells both parties on decline, since the actor is unknown here', async () => {
+      mockPrismaService.quotation.update.mockResolvedValue(mockQuotation);
+
+      await service.declineQuotation({ id: 1, reason: 'Muy caro' });
+      await flush();
+
+      const calls = notified();
+      expect(calls.map((c) => c.sellerId).sort()).toEqual([
+        'client-123',
+        'provider-456',
+      ]);
+      expect(calls[0].data.note).toBe('Muy caro');
+    });
+
+    it('tells the client when the work is completed', async () => {
+      mockPrismaService.quotation.update.mockResolvedValue(mockQuotation);
+
+      await service.completeQuotation(1);
+      await flush();
+
+      expect(notified()).toEqual([
+        expect.objectContaining({
+          sellerId: 'client-123',
+          type: 'QUOTATION_COMPLETED',
+        }),
+      ]);
+    });
+
+    it('still accepts the quotation when notifying throws', async () => {
+      mockPrismaService.quotation.update.mockResolvedValue(mockQuotation);
+      mockUsersClient.notify.mockRejectedValue(new Error('users down'));
+
+      await expect(service.acceptQuotation(1)).resolves.toBeDefined();
+      // Swallowed by the helper — otherwise an unhandled rejection.
+      await flush();
     });
   });
 });

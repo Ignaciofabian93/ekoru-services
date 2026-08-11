@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   NotFoundError,
@@ -10,12 +11,58 @@ import {
 } from '../common/utils/index.js';
 import { AddQuotationInput, UpdateQuotationInput } from './dto/index.js';
 import { QuotationStatus } from '../graphql/enums/index.js';
+import { UsersClient, type NotificationType } from '../common/clients/index.js';
 
 @Injectable()
 export class QuotationsService {
   private readonly logger = new Logger(QuotationsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly users: UsersClient,
+    private readonly config: ConfigService,
+  ) {}
+
+  /**
+   * Tells the other party what just happened to a quotation.
+   *
+   * Best-effort and never awaited by the caller's result: a quotation that was
+   * accepted must stay accepted even if nobody could be notified.
+   */
+  private notify(
+    quotation: QuotationForNotify,
+    type: NotificationType,
+    recipientId: string,
+    extra: Record<string, unknown> = {},
+  ): void {
+    const base = this.config.get<string>('webAppBaseUrl');
+    // `.catch` rather than bare `void`: an unguarded rejected promise takes the
+    // process down, and a quotation must not fail because of a notice.
+    void this.users
+      .notify({
+        sellerId: recipientId,
+        type,
+        relatedId: quotation.id,
+        actionUrl: base ? `${base}/profile/quotations` : null,
+        data: {
+          // The actor is whoever is NOT being notified — users resolves this to
+          // a display name for the copy.
+          actorSellerId:
+            recipientId === quotation.clientId
+              ? quotation.providerId
+              : quotation.clientId,
+          serviceName: quotation.service?.name ?? quotation.title,
+          quotationTitle: quotation.title,
+          ...extra,
+        },
+      })
+      .catch((error) =>
+        this.logger.error(
+          `Quotation ${quotation.id} notification failed:`,
+          error,
+        ),
+      );
+  }
 
   async getQuotation(id: number) {
     try {
@@ -262,6 +309,8 @@ export class QuotationsService {
         },
       });
 
+      this.notify(quotation, 'QUOTATION_REQUEST', quotation.providerId);
+
       return {
         ...quotation,
         client: { id: quotation.clientId },
@@ -326,6 +375,16 @@ export class QuotationsService {
         },
       });
 
+      // Provider-side pricing fields present means the provider answered,
+      // so the client is the one who needs to hear about it. The resolver
+      // carries no caller identity, so this is inferred from the payload.
+      if (
+        input.finalPrice !== undefined ||
+        input.estimatedPrice !== undefined ||
+        input.providerNotes !== undefined
+      ) {
+        this.notify(quotation, 'QUOTATION_RECEIVED', quotation.clientId);
+      }
       return {
         ...quotation,
         client: { id: quotation.clientId },
@@ -376,6 +435,8 @@ export class QuotationsService {
         },
       });
 
+      // The client accepts a quote, so the provider is who needs telling.
+      this.notify(quotation, 'QUOTATION_ACCEPTED', quotation.providerId);
       return {
         ...quotation,
         client: { id: quotation.clientId },
@@ -426,6 +487,15 @@ export class QuotationsService {
         },
       });
 
+      // Either party can decline and this layer has no caller identity, so
+      // both are told the quotation is dead. Narrow this to the counterpart
+      // once the resolver carries @CurrentSeller.
+      this.notify(quotation, 'QUOTATION_DECLINED', quotation.clientId, {
+        note: reason ?? '',
+      });
+      this.notify(quotation, 'QUOTATION_DECLINED', quotation.providerId, {
+        note: reason ?? '',
+      });
       return {
         ...quotation,
         client: { id: quotation.clientId },
@@ -476,6 +546,8 @@ export class QuotationsService {
         },
       });
 
+      // The provider marks the work done; the client is who hears about it.
+      this.notify(quotation, 'QUOTATION_COMPLETED', quotation.clientId);
       return {
         ...quotation,
         client: { id: quotation.clientId },
@@ -526,6 +598,13 @@ export class QuotationsService {
         },
       });
 
+      // Same reasoning as decline: no caller identity here.
+      this.notify(quotation, 'QUOTATION_DECLINED', quotation.clientId, {
+        note: reason ?? '',
+      });
+      this.notify(quotation, 'QUOTATION_DECLINED', quotation.providerId, {
+        note: reason ?? '',
+      });
       return {
         ...quotation,
         client: { id: quotation.clientId },
@@ -549,4 +628,13 @@ export class QuotationsService {
       return false;
     }
   }
+}
+
+/** The quotation fields `notify` reads — a subset of every mutation's select. */
+interface QuotationForNotify {
+  id: number;
+  clientId: string;
+  providerId: string;
+  title: string;
+  service?: { name: string } | null;
 }

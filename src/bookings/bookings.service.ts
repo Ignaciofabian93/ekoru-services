@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { BookingStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { UsersClient, type NotificationType } from '../common/clients/index.js';
 import {
   NotFoundError,
   BadRequestError,
@@ -19,7 +21,89 @@ import {
 export class BookingsService {
   private readonly logger = new Logger(BookingsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly users: UsersClient,
+    private readonly config: ConfigService,
+  ) {}
+
+  /**
+   * Tells one party what just happened to a booking.
+   *
+   * Best-effort and never awaited: a booking that was confirmed must stay
+   * confirmed even if nobody could be notified. `serviceName` is looked up only
+   * when the caller doesn't already have it, so the common paths stay at one
+   * query.
+   */
+  private async notify(
+    booking: BookingForNotify,
+    type: NotificationType,
+    recipientId: string,
+    extra: Record<string, unknown> = {},
+  ): Promise<void> {
+    try {
+      const base = this.config.get<string>('webAppBaseUrl');
+      const serviceName =
+        extra.serviceName ?? (await this.serviceName(booking.serviceId));
+
+      await this.users.notify({
+        sellerId: recipientId,
+        type,
+        relatedId: booking.id,
+        actionUrl: base ? `${base}/profile/bookings` : null,
+        data: {
+          // The actor is whoever is not being notified.
+          actorSellerId:
+            recipientId === booking.clientId
+              ? booking.providerId
+              : booking.clientId,
+          scheduledFor: booking.scheduledDate?.toISOString() ?? null,
+          ...extra,
+          serviceName,
+        },
+      });
+    } catch (error) {
+      // Contains its own failures so the `void` call sites can never raise an
+      // unhandled rejection — a booking must not fail because of a notice.
+      this.logger.error(`Booking ${booking.id} notification failed:`, error);
+    }
+  }
+
+  /**
+   * Notifies the party who did NOT cancel. `cancelledBy` carries the actor, so
+   * unlike the quotation flow this can address exactly one person; when it is
+   * missing both sides are told, since a cancelled booking matters to both.
+   */
+  private async notifyCancelled(
+    booking: BookingForNotify,
+    cancelledBy: string | null,
+    reason?: string | null,
+  ): Promise<void> {
+    const extra = { note: reason ?? '' };
+    const recipients =
+      cancelledBy === booking.clientId
+        ? [booking.providerId]
+        : cancelledBy === booking.providerId
+          ? [booking.clientId]
+          : [booking.clientId, booking.providerId];
+
+    for (const recipient of recipients) {
+      await this.notify(booking, 'BOOKING_CANCELLED', recipient, extra);
+    }
+  }
+
+  /** Name for the notification copy; never fails the surrounding mutation. */
+  private async serviceName(serviceId: number): Promise<string> {
+    try {
+      const service = await this.prisma.service.findUnique({
+        where: { id: serviceId },
+        select: { name: true },
+      });
+      return service?.name ?? 'el servicio';
+    } catch {
+      return 'el servicio';
+    }
+  }
 
   async getServiceBooking(id: number) {
     try {
@@ -197,6 +281,10 @@ export class BookingsService {
         },
       });
 
+      void this.notify(booking, 'BOOKING_REQUEST', booking.providerId, {
+        serviceName: service.name,
+      });
+
       return booking;
     } catch (error) {
       if (error instanceof BadRequestError) {
@@ -237,6 +325,21 @@ export class BookingsService {
         },
       });
 
+      // Only a status change is worth telling someone about; rescheduling
+      // and note edits are not. The client is the one who cares that their
+      // booking was confirmed or closed out.
+      if (input.status === 'CONFIRMED') {
+        void this.notify(booking, 'BOOKING_CONFIRMED', booking.clientId);
+      } else if (input.status === 'COMPLETED') {
+        void this.notify(booking, 'BOOKING_COMPLETED', booking.clientId);
+      } else if (input.status === 'CANCELLED') {
+        void this.notifyCancelled(
+          booking,
+          input.cancelledBy ?? null,
+          input.cancellationReason,
+        );
+      }
+
       return booking;
     } catch (error) {
       this.logger.error('Error al actualizar la reserva:', error);
@@ -264,6 +367,8 @@ export class BookingsService {
         },
       });
 
+      void this.notifyCancelled(booking, cancelledBy, reason);
+
       return booking;
     } catch (error) {
       this.logger.error('Error al cancelar la reserva:', error);
@@ -282,10 +387,21 @@ export class BookingsService {
         },
       });
 
+      void this.notify(booking, 'BOOKING_COMPLETED', booking.clientId);
+
       return booking;
     } catch (error) {
       this.logger.error('Error al completar la reserva:', error);
       throw new InternalServerError('Error al completar la reserva');
     }
   }
+}
+
+/** The booking fields `notify` reads. */
+interface BookingForNotify {
+  id: number;
+  serviceId: number;
+  clientId: string;
+  providerId: string;
+  scheduledDate?: Date | null;
 }
