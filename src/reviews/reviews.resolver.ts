@@ -2,6 +2,8 @@ import { Resolver, Query, Mutation, Args, Int, ID } from '@nestjs/graphql';
 import { ReviewsService } from './reviews.service.js';
 import { ServiceReview, ServiceReviewConnection } from './entities/index.js';
 import { AddServiceReviewInput } from './dto/index.js';
+import { CurrentSeller } from '../common/decorators/index.js';
+import { UnauthorizedError } from '../common/exceptions/index.js';
 
 @Resolver(() => ServiceReview)
 export class ReviewsResolver {
@@ -33,13 +35,28 @@ export class ReviewsResolver {
     });
   }
 
+  /**
+   * The reviewer is the session, never the input, and the service must have
+   * been used: a review nobody had to earn is worth nothing to the next buyer.
+   */
   @Mutation(() => ServiceReview)
-  async addServiceReview(@Args('input') input: AddServiceReviewInput) {
-    return this.reviewsService.addServiceReview(input);
+  async addServiceReview(
+    @Args('input') input: AddServiceReviewInput,
+    @CurrentSeller() reviewerId: string,
+  ) {
+    if (!reviewerId) throw new UnauthorizedError('Debes iniciar sesión');
+    return this.reviewsService.addServiceReview({ ...input, reviewerId });
   }
 
   @Mutation(() => Boolean)
-  async deleteServiceReview(@Args('id', { type: () => ID }) id: string) {
-    return this.reviewsService.deleteServiceReview(parseInt(id, 10));
+  async deleteServiceReview(
+    @Args('id', { type: () => ID }) id: string,
+    @CurrentSeller() reviewerId: string,
+  ) {
+    if (!reviewerId) throw new UnauthorizedError('Debes iniciar sesión');
+    return this.reviewsService.deleteServiceReview({
+      id: parseInt(id, 10),
+      reviewerId,
+    });
   }
 }

@@ -627,4 +627,68 @@ export class ServicesService {
       throw new InternalServerError('Error al obtener servicios favoritos');
     }
   }
+  /** Active FAQs written for one service, in the order the provider set. */
+  async getServiceFaqs(serviceId: number) {
+    try {
+      return await this.prisma.serviceFAQ.findMany({
+        where: { serviceId, isActive: true },
+        orderBy: { displayOrder: 'asc' },
+        select: {
+          id: true,
+          question: true,
+          answer: true,
+          displayOrder: true,
+        },
+      });
+    } catch (error) {
+      this.logger.error('Error al obtener las preguntas frecuentes:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Active packages that include this service. Item rows carry the bundled
+   * service's name so a package can be read without a second round trip.
+   */
+  async getServicePackagesForService(serviceId: number) {
+    try {
+      const packages = await this.prisma.servicePackage.findMany({
+        where: {
+          isActive: true,
+          servicePackageItem: { some: { serviceId } },
+        },
+        orderBy: { totalPrice: 'asc' },
+        select: {
+          id: true,
+          sellerId: true,
+          name: true,
+          description: true,
+          totalPrice: true,
+          discountPercentage: true,
+          validityDays: true,
+          servicePackageItem: {
+            select: {
+              id: true,
+              serviceId: true,
+              quantity: true,
+              service: { select: { name: true } },
+            },
+          },
+        },
+      });
+
+      return packages.map((pkg) => ({
+        ...pkg,
+        items: pkg.servicePackageItem.map((item) => ({
+          id: item.id,
+          serviceId: item.serviceId,
+          quantity: item.quantity,
+          serviceName: item.service?.name ?? null,
+        })),
+      }));
+    } catch (error) {
+      this.logger.error('Error al obtener los paquetes del servicio:', error);
+      return [];
+    }
+  }
 }

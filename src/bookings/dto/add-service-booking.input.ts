@@ -15,8 +15,10 @@ export class AddServiceBookingInput {
   @IsInt()
   serviceId: number;
 
-  @Field(() => String)
-  @IsString()
+  /**
+   * Not part of the GraphQL input: the resolver fills it from the session, so a
+   * caller cannot book on someone else's behalf.
+   */
   clientId: string;
 
   @Field(() => String)

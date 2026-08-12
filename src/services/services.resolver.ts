@@ -11,7 +11,12 @@ import {
   Context,
 } from '@nestjs/graphql';
 import { ServicesService } from './services.service.js';
-import { Service, ServiceConnection } from './entities/index.js';
+import {
+  Service,
+  ServiceConnection,
+  ServiceFaq,
+  ServicePackage,
+} from './entities/index.js';
 import { ServiceSubCategory } from '../serviceSubCategories/entities/index.js';
 import { AddServiceInput, UpdateServiceInput } from './dto/index.js';
 import { ServicePricing } from '../graphql/enums/index.js';
@@ -171,5 +176,24 @@ export class ServicesResolver {
   ): Promise<ServiceSubCategory | null> {
     if (!service.subcategoryId) return null;
     return ctx.loaders.serviceSubCategoryById.load(service.subcategoryId);
+  }
+  /**
+   * FAQs published for this service, active only and in display order. The
+   * table also holds subcategory-level FAQs (`serviceId` null); those are not
+   * this service's answers, so they are not mixed in here.
+   */
+  @ResolveField(() => [ServiceFaq])
+  async faqs(@Parent() service: Service): Promise<ServiceFaq[]> {
+    return this.servicesService.getServiceFaqs(service.id);
+  }
+
+  /**
+   * Packages from this service's provider that include it. Packages belong to
+   * the seller and reach services through their items, so a shopper looking at
+   * one service sees the bundles it is part of.
+   */
+  @ResolveField(() => [ServicePackage])
+  async packages(@Parent() service: Service): Promise<ServicePackage[]> {
+    return this.servicesService.getServicePackagesForService(service.id);
   }
 }

@@ -3,6 +3,7 @@ import { ReviewsService } from './reviews.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   BadRequestError,
+  ForbiddenError,
   InternalServerError,
 } from '../common/exceptions/index';
 import { AddServiceReviewInput } from './dto/index';
@@ -15,8 +16,18 @@ describe('ReviewsService', () => {
       count: jest.fn(),
       findMany: jest.fn(),
       findFirst: jest.fn(),
+      findUnique: jest.fn(),
       create: jest.fn(),
       delete: jest.fn(),
+      aggregate: jest.fn().mockResolvedValue({ _avg: { rating: 4.5 } }),
+    },
+    // A review now requires a completed booking, and writing one refreshes the
+    // service's stored average.
+    serviceBooking: {
+      findFirst: jest.fn().mockResolvedValue({ id: 77 }),
+    },
+    service: {
+      update: jest.fn(),
     },
   };
 
@@ -49,6 +60,10 @@ describe('ReviewsService', () => {
     service = module.get<ReviewsService>(ReviewsService);
 
     jest.clearAllMocks();
+    mockPrismaService.serviceBooking.findFirst.mockResolvedValue({ id: 77 });
+    mockPrismaService.serviceReview.aggregate.mockResolvedValue({
+      _avg: { rating: 4.5 },
+    });
   });
 
   it('should be defined', () => {
@@ -253,6 +268,9 @@ describe('ReviewsService', () => {
           reviewerId: input.reviewerId,
           rating: input.rating,
           comment: input.comment,
+          // Stamped from the completed booking that earned the review.
+          bookingId: 77,
+          isVerifiedPurchase: true,
         },
         select: {
           id: true,
@@ -261,6 +279,7 @@ describe('ReviewsService', () => {
           rating: true,
           comment: true,
           createdAt: true,
+          isVerifiedPurchase: true,
           service: {
             select: {
               id: true,
@@ -345,6 +364,34 @@ describe('ReviewsService', () => {
       );
     });
 
+    it('should refuse a review from someone with no completed booking', async () => {
+      mockPrismaService.serviceReview.findFirst.mockResolvedValue(null);
+      mockPrismaService.serviceBooking.findFirst.mockResolvedValue(null);
+
+      await expect(service.addServiceReview(input)).rejects.toThrow(
+        ForbiddenError,
+      );
+      expect(mockPrismaService.serviceReview.create).not.toHaveBeenCalled();
+    });
+
+    it('should refresh the service average after a review lands', async () => {
+      mockPrismaService.serviceReview.findFirst.mockResolvedValue(null);
+      mockPrismaService.serviceReview.create.mockResolvedValue({
+        ...mockReview,
+        service: mockService,
+      });
+      mockPrismaService.serviceReview.aggregate.mockResolvedValue({
+        _avg: { rating: 4.25 },
+      });
+
+      await service.addServiceReview(input);
+
+      expect(mockPrismaService.service.update).toHaveBeenCalledWith({
+        where: { id: input.serviceId },
+        data: { averageRating: 4.25 },
+      });
+    });
+
     it('should throw InternalServerError on database error during duplicate check', async () => {
       mockPrismaService.serviceReview.findFirst.mockRejectedValue(
         new Error('Database error'),
@@ -357,33 +404,57 @@ describe('ReviewsService', () => {
   });
 
   describe('deleteServiceReview', () => {
+    const author = { id: 1, reviewerId: 'reviewer-123' };
+
     it('should delete a review successfully and return true', async () => {
+      mockPrismaService.serviceReview.findUnique.mockResolvedValue({
+        reviewerId: 'reviewer-123',
+        serviceId: 1,
+      });
       mockPrismaService.serviceReview.delete.mockResolvedValue(mockReview);
 
-      const result = await service.deleteServiceReview(1);
+      const result = await service.deleteServiceReview(author);
 
       expect(mockPrismaService.serviceReview.delete).toHaveBeenCalledWith({
         where: { id: 1 },
       });
+      expect(mockPrismaService.service.update).toHaveBeenCalled();
       expect(result).toBe(true);
     });
 
+    it('should refuse to delete a review written by someone else', async () => {
+      mockPrismaService.serviceReview.findUnique.mockResolvedValue({
+        reviewerId: 'someone-else',
+        serviceId: 1,
+      });
+
+      await expect(service.deleteServiceReview(author)).rejects.toThrow(
+        ForbiddenError,
+      );
+      expect(mockPrismaService.serviceReview.delete).not.toHaveBeenCalled();
+    });
+
     it('should return false on database error', async () => {
+      mockPrismaService.serviceReview.findUnique.mockResolvedValue({
+        reviewerId: 'reviewer-123',
+        serviceId: 1,
+      });
       mockPrismaService.serviceReview.delete.mockRejectedValue(
         new Error('Database error'),
       );
 
-      const result = await service.deleteServiceReview(1);
+      const result = await service.deleteServiceReview(author);
 
       expect(result).toBe(false);
     });
 
     it('should return false when review does not exist', async () => {
-      mockPrismaService.serviceReview.delete.mockRejectedValue(
-        new Error('Record not found'),
-      );
+      mockPrismaService.serviceReview.findUnique.mockResolvedValue(null);
 
-      const result = await service.deleteServiceReview(999);
+      const result = await service.deleteServiceReview({
+        id: 999,
+        reviewerId: 'reviewer-123',
+      });
 
       expect(result).toBe(false);
     });

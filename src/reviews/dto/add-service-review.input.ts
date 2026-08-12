@@ -7,8 +7,10 @@ export class AddServiceReviewInput {
   @IsNumber()
   serviceId: number;
 
-  @Field(() => String)
-  @IsString()
+  /**
+   * Not part of the GraphQL input: the resolver fills it from the session, so
+   * nobody can post a review under another seller's name.
+   */
   reviewerId: string;
 
   @Field(() => Int)

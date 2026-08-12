@@ -16,8 +16,10 @@ export class AddQuotationInput {
   @IsInt()
   serviceId: number;
 
-  @Field(() => String)
-  @IsString()
+  /**
+   * Not part of the GraphQL input: the resolver fills it from the session, so a
+   * caller cannot raise a quote in someone else's name.
+   */
   clientId: string;
 
   @Field(() => String)
