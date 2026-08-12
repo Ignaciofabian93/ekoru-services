@@ -47,6 +47,8 @@ export interface GraphQLContext {
       string,
       ServiceSubCategoryTranslation | null
     >;
+    /** Seller id → business logo, for the `Service.displayImage` fallback. */
+    providerLogo: DataLoader<string, string | null>;
 
     // Whether the current seller has favorited a service (by id).
     serviceLikedByMe: DataLoader<number, boolean>;

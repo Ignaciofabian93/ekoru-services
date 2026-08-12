@@ -104,7 +104,9 @@ describe('QuotationsService', () => {
           serviceId: true,
           clientId: true,
           providerId: true,
-          service: expect.any(Object),
+          // The nested service is selected whole — see the comment on the
+          // projection: a hand-picked subset drops non-nullable scalars.
+          service: true,
         }),
       });
     });

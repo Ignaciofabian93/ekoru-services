@@ -62,6 +62,26 @@ export function createGraphQLContext(
       const liked = new Set(likes.map((l) => l.serviceId));
       return serviceIds.map((id) => liked.has(id));
     }),
+
+    // Provider avatars, for services published without their own image. Most
+    // providers are businesses (logo), but a person account can publish a
+    // service too, so both profile tables are covered in one pass.
+    //
+    // Both belong to the users subgraph — same database, so they are read with
+    // raw SQL — and batched, so a grid of image-less services costs one query
+    // rather than one per card.
+    providerLogo: new DataLoader<string, string | null>(async (sellerIds) => {
+      const rows = await prisma.$queryRaw<
+        { sellerId: string; image: string | null }[]
+      >`SELECT s."id" AS "sellerId",
+               COALESCE(bp."logo", pp."profileImage") AS "image"
+          FROM "Seller" s
+          LEFT JOIN "BusinessProfile" bp ON bp."sellerId" = s."id"
+          LEFT JOIN "PersonProfile" pp ON pp."sellerId" = s."id"
+         WHERE s."id" = ANY(${[...sellerIds]}::text[])`;
+      const bySeller = new Map(rows.map((r) => [r.sellerId, r.image]));
+      return sellerIds.map((id) => bySeller.get(id) ?? null);
+    }),
   };
 
   return {

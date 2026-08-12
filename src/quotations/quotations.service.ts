@@ -87,14 +87,10 @@ export class QuotationsService {
           expiresAt: true,
           acceptedAt: true,
           completedAt: true,
-          service: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              pricingType: true,
-            },
-          },
+          // Whole row: `Service` declares non-nullable scalars (images, tags…)
+          // and a hand-picked subset makes any client selecting one of them
+          // fail with "Cannot return null for non-nullable field".
+          service: true,
         },
       });
 
@@ -298,14 +294,10 @@ export class QuotationsService {
           expiresAt: true,
           acceptedAt: true,
           completedAt: true,
-          service: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              pricingType: true,
-            },
-          },
+          // Whole row: `Service` declares non-nullable scalars (images, tags…)
+          // and a hand-picked subset makes any client selecting one of them
+          // fail with "Cannot return null for non-nullable field".
+          service: true,
         },
       });
 
@@ -364,14 +356,10 @@ export class QuotationsService {
           expiresAt: true,
           acceptedAt: true,
           completedAt: true,
-          service: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              pricingType: true,
-            },
-          },
+          // Whole row: `Service` declares non-nullable scalars (images, tags…)
+          // and a hand-picked subset makes any client selecting one of them
+          // fail with "Cannot return null for non-nullable field".
+          service: true,
         },
       });
 
@@ -424,14 +412,10 @@ export class QuotationsService {
           expiresAt: true,
           acceptedAt: true,
           completedAt: true,
-          service: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              pricingType: true,
-            },
-          },
+          // Whole row: `Service` declares non-nullable scalars (images, tags…)
+          // and a hand-picked subset makes any client selecting one of them
+          // fail with "Cannot return null for non-nullable field".
+          service: true,
         },
       });
 
@@ -476,14 +460,10 @@ export class QuotationsService {
           expiresAt: true,
           acceptedAt: true,
           completedAt: true,
-          service: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              pricingType: true,
-            },
-          },
+          // Whole row: `Service` declares non-nullable scalars (images, tags…)
+          // and a hand-picked subset makes any client selecting one of them
+          // fail with "Cannot return null for non-nullable field".
+          service: true,
         },
       });
 
@@ -535,14 +515,10 @@ export class QuotationsService {
           expiresAt: true,
           acceptedAt: true,
           completedAt: true,
-          service: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              pricingType: true,
-            },
-          },
+          // Whole row: `Service` declares non-nullable scalars (images, tags…)
+          // and a hand-picked subset makes any client selecting one of them
+          // fail with "Cannot return null for non-nullable field".
+          service: true,
         },
       });
 
@@ -587,14 +563,10 @@ export class QuotationsService {
           expiresAt: true,
           acceptedAt: true,
           completedAt: true,
-          service: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              pricingType: true,
-            },
-          },
+          // Whole row: `Service` declares non-nullable scalars (images, tags…)
+          // and a hand-picked subset makes any client selecting one of them
+          // fail with "Cannot return null for non-nullable field".
+          service: true,
         },
       });
 

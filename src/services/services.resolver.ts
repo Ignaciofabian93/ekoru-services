@@ -196,4 +196,22 @@ export class ServicesResolver {
   async packages(@Parent() service: Service): Promise<ServicePackage[]> {
     return this.servicesService.getServicePackagesForService(service.id);
   }
+  /**
+   * The image to show for this service: its own first photo, or the provider's
+   * logo when it has none. A service published without a picture would
+   * otherwise render as a blank card, and the provider's mark is the honest
+   * stand-in — it says who is behind the listing rather than inventing content.
+   *
+   * Null only when the provider has no logo either (or is not a business).
+   */
+  @ResolveField(() => String, { nullable: true })
+  async displayImage(
+    @Parent() service: Service,
+    @Context() ctx: GraphQLContext,
+  ): Promise<string | null> {
+    const own = service.images?.[0];
+    if (own) return own;
+    if (!service.sellerId) return null;
+    return ctx.loaders.providerLogo.load(service.sellerId);
+  }
 }
