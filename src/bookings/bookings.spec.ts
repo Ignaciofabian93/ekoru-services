@@ -355,7 +355,7 @@ describe('BookingsService', () => {
   });
 
   describe('addServiceBooking', () => {
-    const input: AddServiceBookingInput = {
+    const input: AddServiceBookingInput & { clientId: string } = {
       serviceId: 1,
       clientId: 'client-123',
       providerId: 'provider-456',

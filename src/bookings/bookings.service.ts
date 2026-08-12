@@ -257,7 +257,9 @@ export class BookingsService {
     }
   }
 
-  async addServiceBooking(input: AddServiceBookingInput) {
+  async addServiceBooking(
+    input: AddServiceBookingInput & { clientId: string },
+  ) {
     try {
       // Verify service exists and is active
       const service = await this.prisma.service.findUnique({

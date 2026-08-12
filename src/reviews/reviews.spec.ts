@@ -238,7 +238,7 @@ describe('ReviewsService', () => {
   });
 
   describe('addServiceReview', () => {
-    const input: AddServiceReviewInput = {
+    const input: AddServiceReviewInput & { reviewerId: string } = {
       serviceId: 1,
       reviewerId: 'reviewer-123',
       rating: 5,

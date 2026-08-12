@@ -9,17 +9,19 @@ import {
 } from 'class-validator';
 import { GraphQLJSON } from 'graphql-scalars';
 
+/**
+ * What a client sends to book a service.
+ *
+ * The client id is **not** here: the resolver takes it from the session and
+ * passes it alongside as `AddServiceBookingInput & { clientId }`. Declaring it
+ * on the class — even undecorated — would emit a real property that the global
+ * ValidationPipe's `forbidNonWhitelisted` rejects.
+ */
 @InputType()
 export class AddServiceBookingInput {
   @Field(() => Int)
   @IsInt()
   serviceId: number;
-
-  /**
-   * Not part of the GraphQL input: the resolver fills it from the session, so a
-   * caller cannot book on someone else's behalf.
-   */
-  clientId: string;
 
   @Field(() => String)
   @IsString()

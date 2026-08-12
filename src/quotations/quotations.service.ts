@@ -263,7 +263,7 @@ export class QuotationsService {
     }
   }
 
-  async addQuotation(input: AddQuotationInput) {
+  async addQuotation(input: AddQuotationInput & { clientId: string }) {
     try {
       const quotation = await this.prisma.quotation.create({
         data: {

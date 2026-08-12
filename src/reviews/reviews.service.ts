@@ -101,7 +101,9 @@ export class ReviewsService {
     }
   }
 
-  async addServiceReview(input: AddServiceReviewInput) {
+  async addServiceReview(
+    input: AddServiceReviewInput & { reviewerId: string },
+  ) {
     try {
       // Check if user already reviewed this service
       const existingReview = await this.prisma.serviceReview.findFirst({

@@ -10,17 +10,21 @@ import {
 } from 'class-validator';
 import { GraphQLJSON } from 'graphql-scalars';
 
+/**
+ * What a client sends to open a quotation request.
+ *
+ * The client id is **not** here: the resolver takes it from the session and
+ * passes it alongside as `AddQuotationInput & { clientId }`. It is not declared
+ * on the class either — with `useDefineForClassFields` (on from ES2022) even an
+ * undecorated field is emitted as a real property, and the global
+ * ValidationPipe's `forbidNonWhitelisted` rejects any property it has no
+ * validator for.
+ */
 @InputType()
 export class AddQuotationInput {
   @Field(() => Int)
   @IsInt()
   serviceId: number;
-
-  /**
-   * Not part of the GraphQL input: the resolver fills it from the session, so a
-   * caller cannot raise a quote in someone else's name.
-   */
-  clientId: string;
 
   @Field(() => String)
   @IsString()

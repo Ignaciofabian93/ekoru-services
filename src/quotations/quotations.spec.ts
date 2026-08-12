@@ -364,7 +364,7 @@ describe('QuotationsService', () => {
   });
 
   describe('addQuotation', () => {
-    const input: AddQuotationInput = {
+    const input: AddQuotationInput & { clientId: string } = {
       serviceId: 1,
       clientId: 'client-123',
       providerId: 'provider-456',
