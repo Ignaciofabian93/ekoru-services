@@ -16,7 +16,7 @@ async function bootstrap() {
   app.use(
     helmet({
       crossOriginEmbedderPolicy: false, // required for GraphQL playground
-      contentSecurityPolicy: process.env.NODE_ENV === 'production',
+      contentSecurityPolicy: process.env.ENVIRONMENT === 'production',
     }),
   );
 

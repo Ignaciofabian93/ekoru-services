@@ -10,8 +10,6 @@ services:
     container_name: ekoru-services-staging
     env_file:
       - .env.staging
-    ports:
-      - '4004:4004'
     networks:
       - ekoru-staging-network
     deploy:

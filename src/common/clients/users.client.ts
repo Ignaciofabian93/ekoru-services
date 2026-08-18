@@ -41,9 +41,10 @@ export interface NotifyInput {
  * `SellerPreferences` and `NotificationTemplate`, both of which live in the
  * users database. So it reports *what happened* and users decides the rest.
  *
- * Called directly service-to-service (not through the gateway), so the internal
- * secret is sent both as the `x-internal-secret` header and the mutation arg —
- * the users resolver accepts either.
+ * Called directly service-to-service (not through the gateway). The internal
+ * secret travels only as the `x-internal-secret` header — the users resolver
+ * accepts nothing else, since the former mutation argument put the credential
+ * in the public schema.
  */
 @Injectable()
 export class UsersClient {
@@ -74,11 +75,8 @@ export class UsersClient {
     }
 
     const mutation = /* GraphQL */ `
-      mutation EmitNotification(
-        $input: EmitNotificationInput!
-        $secret: String!
-      ) {
-        emitNotification(input: $input, internalSecret: $secret)
+      mutation EmitNotification($input: EmitNotificationInput!) {
+        emitNotification(input: $input)
       }
     `;
 
@@ -90,7 +88,6 @@ export class UsersClient {
         actionUrl: input.actionUrl ?? null,
         data: input.data ?? {},
       },
-      secret,
     };
 
     try {
