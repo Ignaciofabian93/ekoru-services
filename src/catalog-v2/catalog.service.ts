@@ -1,10 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Language } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
-import {
-  NotFoundError,
-  InternalServerError,
-} from '../common/exceptions/index.js';
+import { InternalServerError } from '../common/exceptions/index.js';
 import type { ServiceCatalog } from '../types/catalog.js';
 
 @Injectable()
@@ -44,10 +41,6 @@ export class ServiceCatalogService {
         },
       });
 
-      if (!serviceCategories.length) {
-        throw new NotFoundError('No se encontraron categorías de servicios');
-      }
-
       return serviceCategories.map((cat) => ({
         id: cat.id,
         name: cat.translations[0]?.category || '',
@@ -61,9 +54,6 @@ export class ServiceCatalogService {
         })),
       }));
     } catch (error) {
-      if (error instanceof NotFoundError) {
-        throw error;
-      }
       this.logger.error('Error al obtener el catálogo de servicios:', error);
       throw new InternalServerError(
         'Error al obtener el catálogo de servicios',

@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Language } from '@prisma/client';
 import { ServiceCatalogService } from './catalog.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotFoundError, InternalServerError } from '../common/exceptions/index';
+import { InternalServerError } from '../common/exceptions/index';
 
 describe('ServiceCatalogService', () => {
   let service: ServiceCatalogService;
@@ -134,12 +134,10 @@ describe('ServiceCatalogService', () => {
       });
     });
 
-    it('should throw NotFoundError when no categories are found', async () => {
+    it('should return an empty array when no categories are found', async () => {
       mockPrismaService.serviceCategory.findMany.mockResolvedValue([]);
 
-      await expect(service.getServiceCatalog()).rejects.toThrow(
-        new NotFoundError('No se encontraron categorías de servicios'),
-      );
+      await expect(service.getServiceCatalog()).resolves.toEqual([]);
     });
 
     it('should throw InternalServerError on database error', async () => {
