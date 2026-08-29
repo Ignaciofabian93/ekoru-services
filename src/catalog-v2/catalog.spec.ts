@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Language } from '@prisma/client';
 import { ServiceCatalogService } from './catalog.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { InternalServerError } from '../common/exceptions/index';
 
 describe('ServiceCatalogService', () => {
   let service: ServiceCatalogService;
@@ -108,28 +107,22 @@ describe('ServiceCatalogService', () => {
       ]);
       expect(mockPrismaService.serviceCategory.findMany).toHaveBeenCalledWith({
         where: { isActive: true },
-        select: {
-          id: true,
+        orderBy: { sortOrder: 'asc' },
+        include: {
           translations: {
             where: { language: Language.ES },
-            select: { category: true, slug: true, href: true },
-            take: 1,
+            select: { id: true, category: true, slug: true, href: true },
           },
           subcategories: {
             where: { isActive: true },
             orderBy: { sortOrder: 'asc' },
-            select: {
-              id: true,
+            include: {
               translations: {
                 where: { language: Language.ES },
-                select: { subCategory: true, slug: true, href: true },
-                take: 1,
+                select: { id: true, subCategory: true, slug: true, href: true },
               },
             },
           },
-        },
-        orderBy: {
-          sortOrder: 'asc',
         },
       });
     });
@@ -140,13 +133,13 @@ describe('ServiceCatalogService', () => {
       await expect(service.getServiceCatalog()).resolves.toEqual([]);
     });
 
-    it('should throw InternalServerError on database error', async () => {
+    it('should propagate the underlying error on database failure', async () => {
       mockPrismaService.serviceCategory.findMany.mockRejectedValue(
         new Error('Database error'),
       );
 
       await expect(service.getServiceCatalog()).rejects.toThrow(
-        new InternalServerError('Error al obtener el catálogo de servicios'),
+        'Database error',
       );
     });
   });

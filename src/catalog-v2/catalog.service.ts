@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Language, Prisma } from '@prisma/client';
+import { Language } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { InternalServerError } from '../common/exceptions/index.js';
 import type { ServiceCatalog } from '../types/catalog.js';
 
 @Injectable()
@@ -10,34 +9,47 @@ export class ServiceCatalogService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Mirrors the store and community catalog readers: an empty catalog is a
+   * valid result (`[]`), and a genuine failure is logged and rethrown as-is
+   * rather than collapsed into an opaque INTERNAL_SERVER_ERROR.
+   */
   async getServiceCatalog(
     language: Language = Language.ES,
   ): Promise<ServiceCatalog> {
     try {
       const serviceCategories = await this.prisma.serviceCategory.findMany({
-        where: { isActive: true },
-        select: {
-          id: true,
+        where: {
+          isActive: true,
+        },
+        orderBy: {
+          sortOrder: 'asc',
+        },
+        include: {
           translations: {
-            where: { language },
-            select: { category: true, slug: true, href: true },
-            take: 1,
+            where: { language: language },
+            select: {
+              id: true,
+              category: true,
+              slug: true,
+              href: true,
+            },
           },
           subcategories: {
             where: { isActive: true },
             orderBy: { sortOrder: 'asc' },
-            select: {
-              id: true,
+            include: {
               translations: {
-                where: { language },
-                select: { subCategory: true, slug: true, href: true },
-                take: 1,
+                where: { language: language },
+                select: {
+                  id: true,
+                  subCategory: true,
+                  slug: true,
+                  href: true,
+                },
               },
             },
           },
-        },
-        orderBy: {
-          sortOrder: 'asc',
         },
       });
 
@@ -54,22 +66,11 @@ export class ServiceCatalogService {
         })),
       }));
     } catch (error) {
-      const cause: Record<string, unknown> =
-        error instanceof Prisma.PrismaClientKnownRequestError
-          ? { name: error.name, prismaCode: error.code, meta: error.meta }
-          : error instanceof Error
-            ? { name: error.name, message: error.message }
-            : { message: String(error) };
-
       this.logger.error(
-        `Error al obtener el catálogo de servicios (language=${language}): ${JSON.stringify(cause)}`,
-        error instanceof Error ? error.stack : undefined,
+        `Error getting service catalog: ${error.message}`,
+        error.stack,
       );
-
-      throw new InternalServerError(
-        'Error al obtener el catálogo de servicios',
-        process.env.ENVIRONMENT === 'production' ? {} : { reason: cause },
-      );
+      throw error;
     }
   }
 }

@@ -41,14 +41,10 @@ export class ForbiddenError extends GraphQLError {
 }
 
 export class InternalServerError extends GraphQLError {
-  constructor(
-    message: string = 'Error interno del servidor',
-    extensions: Record<string, unknown> = {},
-  ) {
+  constructor(message: string = 'Error interno del servidor') {
     super(message, {
       extensions: {
         code: 'INTERNAL_SERVER_ERROR',
-        ...extensions,
       },
     });
   }
