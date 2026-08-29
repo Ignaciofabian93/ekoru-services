@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Language } from '@prisma/client';
+import { Language, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { InternalServerError } from '../common/exceptions/index.js';
 import type { ServiceCatalog } from '../types/catalog.js';
@@ -54,9 +54,21 @@ export class ServiceCatalogService {
         })),
       }));
     } catch (error) {
-      this.logger.error('Error al obtener el catálogo de servicios:', error);
+      const cause: Record<string, unknown> =
+        error instanceof Prisma.PrismaClientKnownRequestError
+          ? { name: error.name, prismaCode: error.code, meta: error.meta }
+          : error instanceof Error
+            ? { name: error.name, message: error.message }
+            : { message: String(error) };
+
+      this.logger.error(
+        `Error al obtener el catálogo de servicios (language=${language}): ${JSON.stringify(cause)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+
       throw new InternalServerError(
         'Error al obtener el catálogo de servicios',
+        process.env.ENVIRONMENT === 'production' ? {} : { reason: cause },
       );
     }
   }
