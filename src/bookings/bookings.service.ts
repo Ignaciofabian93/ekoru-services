@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { BookingStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { UsersClient, type NotificationType } from '../common/clients/index.js';
+import { awardServicePoints } from '../common/service-points.js';
 import {
   NotFoundError,
   BadRequestError,
@@ -334,6 +335,7 @@ export class BookingsService {
         void this.notify(booking, 'BOOKING_CONFIRMED', booking.clientId);
       } else if (input.status === 'COMPLETED') {
         void this.notify(booking, 'BOOKING_COMPLETED', booking.clientId);
+        void this.awardPoints(booking);
       } else if (input.status === 'CANCELLED') {
         void this.notifyCancelled(
           booking,
@@ -347,6 +349,21 @@ export class BookingsService {
       this.logger.error('Error al actualizar la reserva:', error);
       throw new InternalServerError('Error al actualizar la reserva');
     }
+  }
+
+  /** Eco-points for a completed booking, once per booking (POINTS.md). */
+  private awardPoints(booking: {
+    id: number;
+    serviceId: number;
+    clientId: string;
+    providerId: string;
+  }): Promise<void> {
+    return awardServicePoints(this.prisma, this.users, {
+      serviceId: booking.serviceId,
+      clientId: booking.clientId,
+      providerId: booking.providerId,
+      reference: `booking:${booking.id}`,
+    });
   }
 
   async cancelServiceBooking({
@@ -390,6 +407,7 @@ export class BookingsService {
       });
 
       void this.notify(booking, 'BOOKING_COMPLETED', booking.clientId);
+      void this.awardPoints(booking);
 
       return booking;
     } catch (error) {

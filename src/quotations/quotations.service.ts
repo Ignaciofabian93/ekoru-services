@@ -12,6 +12,7 @@ import {
 import { AddQuotationInput, UpdateQuotationInput } from './dto/index.js';
 import { QuotationStatus } from '../graphql/enums/index.js';
 import { UsersClient, type NotificationType } from '../common/clients/index.js';
+import { awardServicePoints } from '../common/service-points.js';
 
 @Injectable()
 export class QuotationsService {
@@ -373,6 +374,16 @@ export class QuotationsService {
       ) {
         this.notify(quotation, 'QUOTATION_RECEIVED', quotation.clientId);
       }
+      // Completing through the general update earns the same points as
+      // completeQuotation; the users engine pays each quotation once.
+      if (input.status === QuotationStatus.COMPLETED) {
+        void awardServicePoints(this.prisma, this.users, {
+          serviceId: quotation.serviceId,
+          clientId: quotation.clientId,
+          providerId: quotation.providerId,
+          reference: `quotation:${quotation.id}`,
+        });
+      }
       return {
         ...quotation,
         client: { id: quotation.clientId },
@@ -524,6 +535,12 @@ export class QuotationsService {
 
       // The provider marks the work done; the client is who hears about it.
       this.notify(quotation, 'QUOTATION_COMPLETED', quotation.clientId);
+      void awardServicePoints(this.prisma, this.users, {
+        serviceId: quotation.serviceId,
+        clientId: quotation.clientId,
+        providerId: quotation.providerId,
+        reference: `quotation:${quotation.id}`,
+      });
       return {
         ...quotation,
         client: { id: quotation.clientId },

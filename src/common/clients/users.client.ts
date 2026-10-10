@@ -128,4 +128,66 @@ export class UsersClient {
       return false;
     }
   }
+
+  /**
+   * A completed activity earns points through the users points engine
+   * (ekoru-users docs/POINTS.md). Idempotent per seller + reference.
+   * Best-effort: returns the points credited, 0 on any failure.
+   */
+  async awardActivityPoints(input: {
+    sellerId: string;
+    kind: string;
+    reference: string;
+  }): Promise<number> {
+    const url = this.config.get<string>('subgraphs.users');
+    const secret = this.config.get<string>('internalSecret');
+    if (!url || !secret) {
+      this.logger.error(
+        `USERS_URL or INTERNAL_SERVICE_SECRET missing — no points for ${input.reference}`,
+      );
+      return 0;
+    }
+    const mutation = /* GraphQL */ `
+      mutation AwardActivityPoints(
+        $sellerId: ID!
+        $kind: TransactionKind!
+        $reference: String!
+      ) {
+        awardActivityPoints(
+          sellerId: $sellerId
+          kind: $kind
+          reference: $reference
+        )
+      }
+    `;
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-internal-secret': secret,
+        },
+        body: JSON.stringify({ query: mutation, variables: input }),
+      });
+      const body = (await res.json()) as {
+        data?: { awardActivityPoints: number | null };
+        errors?: Array<{ message: string }>;
+      };
+      if (!res.ok || body.errors?.length) {
+        const messages = (body.errors ?? []).map((e) => e.message).join(' | ');
+        this.logger.error(
+          `Points for ${input.reference} rejected (${res.status}): ${messages}`,
+        );
+        return 0;
+      }
+      return body.data?.awardActivityPoints ?? 0;
+    } catch (err) {
+      this.logger.error(
+        `Points for ${input.reference} failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      return 0;
+    }
+  }
 }
