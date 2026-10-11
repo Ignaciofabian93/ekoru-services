@@ -61,6 +61,13 @@ export class Quotation {
   @Field(() => Date, { nullable: true })
   completedAt?: Date;
 
+  @Field(() => Date, {
+    nullable: true,
+    description:
+      'When the client paid this quotation through EKORU (set by ekoru-transactions).',
+  })
+  paidAt?: Date;
+
   // Pricing breakdown
   @Field(() => GraphQLJSON, { nullable: true })
   priceBreakdown?: any;

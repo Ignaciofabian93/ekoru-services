@@ -1,10 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
-import {
-  UnauthorizedError,
-  BadRequestError,
-} from '../common/exceptions/index.js';
+import { BadRequestError } from '../common/exceptions/index.js';
+import { adminSellerScope, assertAdminCan } from '../common/admin-access.js';
 import {
   calculatePrismaParams,
   createPaginatedResponse,
@@ -69,13 +67,21 @@ export class AdminServicesService {
     sellerId?: string;
     isActive?: boolean;
   }) {
-    this.requireAdmin(adminId);
+    const scopedSellerId = await adminSellerScope(
+      this.prisma,
+      adminId,
+      'MANAGE_PRODUCTS',
+    );
     const { skip, take } = calculatePrismaParams(page, pageSize);
 
     const where: Prisma.ServiceWhereInput = {
       ...(id != null && { id }),
       ...(subcategoryId != null && { subcategoryId }),
-      ...(sellerId && { sellerId }),
+      // A BUSINESS admin (the panel's my-business screen) only ever sees
+      // their own seller's services, whatever seller the request named.
+      ...((scopedSellerId ?? sellerId) && {
+        sellerId: scopedSellerId ?? sellerId,
+      }),
       ...(isActive != null && { isActive }),
       ...(search?.trim() && {
         name: { contains: search.trim(), mode: 'insensitive' },
@@ -105,7 +111,7 @@ export class AdminServicesService {
     adminId?: string;
     rows: ServiceUpsertRowInput[];
   }): Promise<BulkResult> {
-    this.requireAdmin(adminId);
+    await assertAdminCan(this.prisma, adminId, 'MANAGE_PRODUCTS');
 
     return this.processRows(rows, async (row) => {
       const data = this.pickDefined({
@@ -146,7 +152,7 @@ export class AdminServicesService {
   }
 
   async deleteService({ adminId, id }: { adminId?: string; id: number }) {
-    this.requireAdmin(adminId);
+    await assertAdminCan(this.prisma, adminId, 'MANAGE_PRODUCTS');
     try {
       await this.prisma.service.delete({ where: { id } });
       return true;
@@ -164,7 +170,7 @@ export class AdminServicesService {
     adminId?: string;
     rows: ServiceMediaUpsertRowInput[];
   }): Promise<BulkResult> {
-    this.requireAdmin(adminId);
+    await assertAdminCan(this.prisma, adminId, 'MANAGE_PRODUCTS');
 
     return this.processRows(rows, async (row) => {
       const data = this.pickDefined({
@@ -197,7 +203,7 @@ export class AdminServicesService {
   }
 
   async deleteServiceMedia({ adminId, id }: { adminId?: string; id: number }) {
-    this.requireAdmin(adminId);
+    await assertAdminCan(this.prisma, adminId, 'MANAGE_PRODUCTS');
     try {
       await this.prisma.serviceMedia.delete({ where: { id } });
       return true;
@@ -215,7 +221,7 @@ export class AdminServicesService {
     adminId?: string;
     rows: ServiceFaqUpsertRowInput[];
   }): Promise<BulkResult> {
-    this.requireAdmin(adminId);
+    await assertAdminCan(this.prisma, adminId, 'MANAGE_PRODUCTS');
 
     return this.processRows(rows, async (row) => {
       const data = this.pickDefined({
@@ -245,7 +251,7 @@ export class AdminServicesService {
   }
 
   async deleteServiceFaq({ adminId, id }: { adminId?: string; id: number }) {
-    this.requireAdmin(adminId);
+    await assertAdminCan(this.prisma, adminId, 'MANAGE_PRODUCTS');
     try {
       await this.prisma.serviceFAQ.delete({ where: { id } });
       return true;
@@ -273,7 +279,7 @@ export class AdminServicesService {
     sellerId?: string;
     isActive?: boolean;
   }) {
-    this.requireAdmin(adminId);
+    await assertAdminCan(this.prisma, adminId, 'MANAGE_PRODUCTS');
     const { skip, take } = calculatePrismaParams(page, pageSize);
 
     const where: Prisma.ServicePackageWhereInput = {
@@ -306,7 +312,7 @@ export class AdminServicesService {
     adminId?: string;
     rows: ServicePackageUpsertRowInput[];
   }): Promise<BulkResult> {
-    this.requireAdmin(adminId);
+    await assertAdminCan(this.prisma, adminId, 'MANAGE_PRODUCTS');
 
     return this.processRows(rows, async (row) => {
       const data = this.pickDefined({
@@ -353,7 +359,7 @@ export class AdminServicesService {
     adminId?: string;
     id: number;
   }) {
-    this.requireAdmin(adminId);
+    await assertAdminCan(this.prisma, adminId, 'MANAGE_PRODUCTS');
     try {
       await this.prisma.servicePackage.delete({ where: { id } });
       return true;
@@ -369,7 +375,7 @@ export class AdminServicesService {
     adminId?: string;
     rows: ServicePackageItemUpsertRowInput[];
   }): Promise<BulkResult> {
-    this.requireAdmin(adminId);
+    await assertAdminCan(this.prisma, adminId, 'MANAGE_PRODUCTS');
 
     return this.processRows(rows, async (row) => {
       const data = this.pickDefined({
@@ -425,7 +431,7 @@ export class AdminServicesService {
     adminId?: string;
     id: number;
   }) {
-    this.requireAdmin(adminId);
+    await assertAdminCan(this.prisma, adminId, 'MANAGE_PRODUCTS');
     try {
       await this.prisma.servicePackageItem.delete({ where: { id } });
       return true;
@@ -451,7 +457,7 @@ export class AdminServicesService {
     search?: string;
     isLicenseVerified?: boolean;
   }) {
-    this.requireAdmin(adminId);
+    await assertAdminCan(this.prisma, adminId, 'VIEW_USER_DATA');
     const { skip, take } = calculatePrismaParams(page, pageSize);
 
     const term = search?.trim();
@@ -486,7 +492,7 @@ export class AdminServicesService {
     adminId?: string;
     rows: ServiceCredentialsUpsertRowInput[];
   }): Promise<BulkResult> {
-    this.requireAdmin(adminId);
+    await assertAdminCan(this.prisma, adminId, 'VIEW_USER_DATA');
 
     return this.processRows(rows, async (row) => {
       const data = this.pickDefined({
@@ -542,7 +548,7 @@ export class AdminServicesService {
     adminId?: string;
     id: number;
   }) {
-    this.requireAdmin(adminId);
+    await assertAdminCan(this.prisma, adminId, 'VIEW_USER_DATA');
     try {
       await this.prisma.serviceProviderCredentials.delete({ where: { id } });
       return true;
@@ -552,12 +558,6 @@ export class AdminServicesService {
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
-
-  private requireAdmin(adminId?: string): void {
-    if (!adminId) {
-      throw new UnauthorizedError('Admin authentication required');
-    }
-  }
 
   private requireFields<T extends object>(row: T, fields: (keyof T)[]): void {
     const missing = fields.filter(

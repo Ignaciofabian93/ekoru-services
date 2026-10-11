@@ -1,9 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { QuotationsService } from './quotations.service';
+import { resetHiddenProviderCache } from '../common/seller-visibility';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersClient } from '../common/clients/index';
-import { NotFoundError, InternalServerError } from '../common/exceptions/index';
+import {
+  NotFoundError,
+  BadRequestError,
+  ForbiddenError,
+  InternalServerError,
+} from '../common/exceptions/index';
 import { AddQuotationInput, UpdateQuotationInput } from './dto/index';
 import { QuotationStatus } from '../graphql/enums/index';
 
@@ -18,8 +24,14 @@ describe('QuotationsService', () => {
       count: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
       delete: jest.fn(),
     },
+    service: {
+      findUnique: jest.fn(),
+    },
+    // Hidden providers (banned or unapproved); nobody unless a test says so.
+    $queryRaw: jest.fn(),
   };
 
   const mockService = {
@@ -52,6 +64,8 @@ describe('QuotationsService', () => {
 
   beforeEach(async () => {
     mockUsersClient = { notify: jest.fn().mockResolvedValue(true) };
+    resetHiddenProviderCache();
+    mockPrismaService.$queryRaw.mockResolvedValue([]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -366,23 +380,33 @@ describe('QuotationsService', () => {
   });
 
   describe('addQuotation', () => {
+    // A tampered request: another provider and a price set by the client.
+    // Both must be ignored.
     const input: AddQuotationInput & { clientId: string } = {
       serviceId: 1,
       clientId: 'client-123',
-      providerId: 'provider-456',
+      providerId: 'attacker-999',
       title: 'New Quotation',
       description: 'New quotation description',
-      estimatedPrice: 600,
+      estimatedPrice: 1,
       estimatedDuration: 150,
       clientNotes: 'New client notes',
       attachments: ['file1.pdf', 'file2.pdf'],
       expiresAt: new Date('2025-12-31'),
     };
 
+    beforeEach(() => {
+      mockPrismaService.service.findUnique.mockResolvedValue({
+        sellerId: 'provider-456',
+        isActive: true,
+      });
+    });
+
     it('should create a new quotation successfully', async () => {
       const createdQuotation = {
         ...mockQuotation,
         ...input,
+        providerId: 'provider-456',
         id: 2,
         service: mockService,
       };
@@ -395,10 +419,9 @@ describe('QuotationsService', () => {
         data: {
           serviceId: input.serviceId,
           clientId: input.clientId,
-          providerId: input.providerId,
+          providerId: 'provider-456',
           title: input.title,
           description: input.description,
-          estimatedPrice: input.estimatedPrice,
           estimatedDuration: input.estimatedDuration,
           clientNotes: input.clientNotes,
           attachments: input.attachments,
@@ -446,6 +469,38 @@ describe('QuotationsService', () => {
         new InternalServerError('Error al crear la cotización'),
       );
     });
+
+    it('refuses a quote on an inactive or missing service', async () => {
+      mockPrismaService.service.findUnique.mockResolvedValue(null);
+
+      await expect(service.addQuotation(input)).rejects.toThrow(
+        new BadRequestError('Servicio no disponible'),
+      );
+      expect(mockPrismaService.quotation.create).not.toHaveBeenCalled();
+    });
+
+    it("refuses a quote on a banned or unapproved provider's service", async () => {
+      mockPrismaService.$queryRaw.mockResolvedValue([
+        { sellerId: 'provider-456' },
+      ]);
+
+      await expect(service.addQuotation(input)).rejects.toThrow(
+        new BadRequestError('Servicio no disponible'),
+      );
+      expect(mockPrismaService.quotation.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses a quote on your own service', async () => {
+      mockPrismaService.service.findUnique.mockResolvedValue({
+        sellerId: 'client-123',
+        isActive: true,
+      });
+
+      await expect(service.addQuotation(input)).rejects.toThrow(
+        new BadRequestError('No puedes cotizar tu propio servicio'),
+      );
+      expect(mockPrismaService.quotation.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('updateQuotation', () => {
@@ -453,9 +508,9 @@ describe('QuotationsService', () => {
       id: '1',
       estimatedPrice: 700,
       finalPrice: 650,
-      status: QuotationStatus.ACCEPTED,
       providerNotes: 'Updated provider notes',
     };
+    const pending = { status: 'PENDING' };
 
     it('should update a quotation successfully', async () => {
       const updatedQuotation = {
@@ -467,14 +522,13 @@ describe('QuotationsService', () => {
 
       mockPrismaService.quotation.update.mockResolvedValue(updatedQuotation);
 
-      const result = await service.updateQuotation(input);
+      const result = await service.updateQuotation({ input, current: pending });
 
       expect(mockPrismaService.quotation.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: {
           estimatedPrice: input.estimatedPrice,
           finalPrice: input.finalPrice,
-          status: input.status,
           providerNotes: input.providerNotes,
           updatedAt: expect.any(Date),
         },
@@ -501,7 +555,7 @@ describe('QuotationsService', () => {
 
       mockPrismaService.quotation.update.mockResolvedValue(updatedQuotation);
 
-      await service.updateQuotation(partialInput);
+      await service.updateQuotation({ input: partialInput, current: pending });
 
       const callData = mockPrismaService.quotation.update.mock.calls[0][0].data;
       expect(callData.finalPrice).toBe(550);
@@ -525,7 +579,7 @@ describe('QuotationsService', () => {
 
       mockPrismaService.quotation.update.mockResolvedValue(updatedQuotation);
 
-      await service.updateQuotation(zeroInput);
+      await service.updateQuotation({ input: zeroInput, current: pending });
 
       const callData = mockPrismaService.quotation.update.mock.calls[0][0].data;
       expect(callData.estimatedPrice).toBe(0);
@@ -537,9 +591,56 @@ describe('QuotationsService', () => {
         new Error('Database error'),
       );
 
-      await expect(service.updateQuotation(input)).rejects.toThrow(
+      await expect(
+        service.updateQuotation({ input, current: pending }),
+      ).rejects.toThrow(
         new InternalServerError('Error al actualizar la cotización'),
       );
+    });
+
+    it('refuses a status change; those have their own mutations', async () => {
+      await expect(
+        service.updateQuotation({
+          input: { id: '1', status: QuotationStatus.ACCEPTED },
+          current: pending,
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenError);
+      expect(mockPrismaService.quotation.update).not.toHaveBeenCalled();
+    });
+
+    it('refuses marking the deposit paid; payments belong to transactions', async () => {
+      await expect(
+        service.updateQuotation({
+          input: { id: '1', depositPaid: true },
+          current: pending,
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenError);
+    });
+
+    it('freezes the price once the client accepted it', async () => {
+      await expect(
+        service.updateQuotation({
+          input: { id: '1', finalPrice: 9999 },
+          current: { status: 'ACCEPTED' },
+        }),
+      ).rejects.toBeInstanceOf(BadRequestError);
+      expect(mockPrismaService.quotation.update).not.toHaveBeenCalled();
+    });
+
+    it('still takes notes after acceptance', async () => {
+      mockPrismaService.quotation.update.mockResolvedValue({
+        ...mockQuotation,
+        service: mockService,
+      });
+
+      await service.updateQuotation({
+        input: { id: '1', providerNotes: 'Llego a las 10' },
+        current: { status: 'ACCEPTED' },
+      });
+
+      expect(
+        mockPrismaService.quotation.update.mock.calls[0][0].data.providerNotes,
+      ).toBe('Llego a las 10');
     });
   });
 
@@ -585,7 +686,7 @@ describe('QuotationsService', () => {
       const declinedQuotation = {
         ...mockQuotation,
         status: 'DECLINED',
-        providerNotes: 'Not available',
+        declineReason: 'Not available',
         service: mockService,
       };
 
@@ -600,13 +701,13 @@ describe('QuotationsService', () => {
         where: { id: 1 },
         data: {
           status: 'DECLINED',
-          providerNotes: 'Not available',
+          declineReason: 'Not available',
           updatedAt: expect.any(Date),
         },
         select: expect.any(Object),
       });
       expect(result.status).toBe('DECLINED');
-      expect(result.providerNotes).toBe('Not available');
+      expect(result.declineReason).toBe('Not available');
     });
 
     it('should decline a quotation without reason', async () => {
@@ -624,7 +725,7 @@ describe('QuotationsService', () => {
         where: { id: 1 },
         data: {
           status: 'DECLINED',
-          providerNotes: undefined,
+          declineReason: undefined,
           updatedAt: expect.any(Date),
         },
         select: expect.any(Object),
@@ -686,7 +787,7 @@ describe('QuotationsService', () => {
       const cancelledQuotation = {
         ...mockQuotation,
         status: 'CANCELLED',
-        providerNotes: 'Client request',
+        cancellationReason: 'Client request',
         service: mockService,
       };
 
@@ -695,19 +796,20 @@ describe('QuotationsService', () => {
       const result = await service.cancelQuotation({
         id: 1,
         reason: 'Client request',
+        cancelledBy: 'client-123',
       });
 
       expect(mockPrismaService.quotation.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: {
           status: 'CANCELLED',
-          providerNotes: 'Client request',
+          cancellationReason: 'Client request',
           updatedAt: expect.any(Date),
         },
         select: expect.any(Object),
       });
       expect(result.status).toBe('CANCELLED');
-      expect(result.providerNotes).toBe('Client request');
+      expect(result.cancellationReason).toBe('Client request');
     });
 
     it('should cancel a quotation without reason', async () => {
@@ -719,13 +821,13 @@ describe('QuotationsService', () => {
 
       mockPrismaService.quotation.update.mockResolvedValue(cancelledQuotation);
 
-      await service.cancelQuotation({ id: 1 });
+      await service.cancelQuotation({ id: 1, cancelledBy: 'client-123' });
 
       expect(mockPrismaService.quotation.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: {
           status: 'CANCELLED',
-          providerNotes: undefined,
+          cancellationReason: undefined,
           updatedAt: expect.any(Date),
         },
         select: expect.any(Object),
@@ -738,7 +840,11 @@ describe('QuotationsService', () => {
       );
 
       await expect(
-        service.cancelQuotation({ id: 1, reason: 'reason' }),
+        service.cancelQuotation({
+          id: 1,
+          reason: 'reason',
+          cancelledBy: 'client-123',
+        }),
       ).rejects.toThrow(
         new InternalServerError('Error al cancelar la cotización'),
       );
@@ -777,6 +883,100 @@ describe('QuotationsService', () => {
       expect(result).toBe(false);
     });
   });
+  describe('quotation payments (SRV-3)', () => {
+    const row = {
+      id: 1,
+      title: 'Test Quotation',
+      status: 'ACCEPTED',
+      clientId: 'client-123',
+      providerId: 'provider-456',
+      estimatedPrice: 500,
+      finalPrice: 450,
+      paidAt: null,
+      paidPaymentId: null,
+    };
+
+    it('charges the final price when set, else the estimate', async () => {
+      mockPrismaService.quotation.findUnique.mockResolvedValueOnce(row);
+      await expect(service.getQuotationCharge(1)).resolves.toMatchObject({
+        amount: 450,
+        currency: 'CLP',
+        paid: false,
+        clientId: 'client-123',
+        providerId: 'provider-456',
+      });
+
+      mockPrismaService.quotation.findUnique.mockResolvedValueOnce({
+        ...row,
+        finalPrice: null,
+      });
+      await expect(service.getQuotationCharge(1)).resolves.toMatchObject({
+        amount: 500,
+      });
+    });
+
+    it('throws NotFoundError for an unknown quotation', async () => {
+      mockPrismaService.quotation.findUnique.mockResolvedValue(null);
+      await expect(service.getQuotationCharge(9)).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
+    });
+
+    it('stamps an accepted quotation paid, only while still unpaid', async () => {
+      const paidAt = new Date();
+      mockPrismaService.quotation.findUnique
+        .mockResolvedValueOnce(row)
+        .mockResolvedValueOnce({ ...row, paidAt, paidPaymentId: 77 });
+      mockPrismaService.quotation.updateMany.mockResolvedValue({ count: 1 });
+
+      const result = await service.markQuotationPaid({ id: 1, paymentId: 77 });
+
+      expect(mockPrismaService.quotation.updateMany).toHaveBeenCalledWith({
+        where: { id: 1, paidAt: null },
+        data: { paidAt: expect.any(Date), paidPaymentId: 77 },
+      });
+      expect(result).toMatchObject({ paid: true, paidPaymentId: 77 });
+    });
+
+    it('is idempotent for the same payment', async () => {
+      mockPrismaService.quotation.findUnique.mockResolvedValue({
+        ...row,
+        paidAt: new Date(),
+        paidPaymentId: 77,
+      });
+
+      await expect(
+        service.markQuotationPaid({ id: 1, paymentId: 77 }),
+      ).resolves.toMatchObject({ paid: true });
+      expect(mockPrismaService.quotation.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('refuses a second, different payment', async () => {
+      mockPrismaService.quotation.findUnique.mockResolvedValue({
+        ...row,
+        paidAt: new Date(),
+        paidPaymentId: 77,
+      });
+
+      await expect(
+        service.markQuotationPaid({ id: 1, paymentId: 78 }),
+      ).rejects.toBeInstanceOf(BadRequestError);
+      expect(mockPrismaService.quotation.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('refuses to mark a quotation the client has not accepted', async () => {
+      mockPrismaService.quotation.findUnique.mockResolvedValue({
+        ...row,
+        status: 'PENDING',
+      });
+
+      await expect(
+        service.markQuotationPaid({ id: 1, paymentId: 77 }),
+      ).rejects.toBeInstanceOf(BadRequestError);
+      expect(mockPrismaService.quotation.updateMany).not.toHaveBeenCalled();
+    });
+  });
+
   describe('notifications', () => {
     /** Fire-and-forget, so flush before asserting the side effect. */
     const flush = () => new Promise((resolve) => setImmediate(resolve));
@@ -792,6 +992,10 @@ describe('QuotationsService', () => {
       );
 
     it('tells the provider when a client requests a quote', async () => {
+      mockPrismaService.service.findUnique.mockResolvedValue({
+        sellerId: 'provider-456',
+        isActive: true,
+      });
       mockPrismaService.quotation.create.mockResolvedValue(mockQuotation);
 
       await service.addQuotation({
@@ -814,7 +1018,10 @@ describe('QuotationsService', () => {
     it('tells the client when the provider prices the quote', async () => {
       mockPrismaService.quotation.update.mockResolvedValue(mockQuotation);
 
-      await service.updateQuotation({ id: '1', finalPrice: 750 } as never);
+      await service.updateQuotation({
+        input: { id: '1', finalPrice: 750 },
+        current: { status: 'PENDING' },
+      });
       await flush();
 
       expect(notified()).toEqual([
@@ -829,9 +1036,9 @@ describe('QuotationsService', () => {
       mockPrismaService.quotation.update.mockResolvedValue(mockQuotation);
 
       await service.updateQuotation({
-        id: '1',
-        clientNotes: 'extra context',
-      } as never);
+        input: { id: '1', attachments: ['plano.pdf'] },
+        current: { status: 'PENDING' },
+      });
       await flush();
 
       expect(mockUsersClient.notify).not.toHaveBeenCalled();
@@ -851,18 +1058,45 @@ describe('QuotationsService', () => {
       ]);
     });
 
-    it('tells both parties on decline, since the actor is unknown here', async () => {
+    it('tells the provider when the client declines', async () => {
       mockPrismaService.quotation.update.mockResolvedValue(mockQuotation);
 
       await service.declineQuotation({ id: 1, reason: 'Muy caro' });
       await flush();
 
       const calls = notified();
-      expect(calls.map((c) => c.sellerId).sort()).toEqual([
-        'client-123',
-        'provider-456',
-      ]);
+      expect(calls.map((c) => c.sellerId)).toEqual(['provider-456']);
       expect(calls[0].data.note).toBe('Muy caro');
+    });
+
+    it('tells only the other side when one side cancels', async () => {
+      mockPrismaService.quotation.update.mockResolvedValue(mockQuotation);
+
+      await service.cancelQuotation({
+        id: 1,
+        reason: 'Cambio de planes',
+        cancelledBy: 'provider-456',
+      });
+      await flush();
+
+      expect(notified().map((c) => c.sellerId)).toEqual(['client-123']);
+    });
+
+    it('tells both sides when an operator cancels', async () => {
+      mockPrismaService.quotation.update.mockResolvedValue(mockQuotation);
+
+      await service.cancelQuotation({
+        id: 1,
+        reason: 'Disputa resuelta por EKORU',
+        cancelledBy: 'ADMIN',
+      });
+      await flush();
+
+      expect(
+        notified()
+          .map((c) => c.sellerId)
+          .sort(),
+      ).toEqual(['client-123', 'provider-456']);
     });
 
     it('tells the client when the work is completed', async () => {

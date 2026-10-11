@@ -1,11 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BookingsService } from './bookings.service';
+import { resetHiddenProviderCache } from '../common/seller-visibility';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersClient } from '../common/clients/index';
 import {
   NotFoundError,
   BadRequestError,
+  ForbiddenError,
   InternalServerError,
 } from '../common/exceptions/index';
 import { AddServiceBookingInput, UpdateServiceBookingInput } from './dto/index';
@@ -25,6 +27,8 @@ describe('BookingsService', () => {
     service: {
       findUnique: jest.fn(),
     },
+    // Hidden providers (banned or unapproved); nobody unless a test says so.
+    $queryRaw: jest.fn(),
   };
 
   const mockBooking = {
@@ -51,10 +55,14 @@ describe('BookingsService', () => {
     id: 1,
     isActive: true,
     title: 'Test Service',
+    sellerId: 'provider-456',
+    basePrice: 100,
   };
 
   beforeEach(async () => {
     mockUsersClient = { notify: jest.fn().mockResolvedValue(true) };
+    resetHiddenProviderCache();
+    mockPrismaService.$queryRaw.mockResolvedValue([]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -355,14 +363,16 @@ describe('BookingsService', () => {
   });
 
   describe('addServiceBooking', () => {
+    // A tampered request: another provider and a price of 1. Both must be
+    // replaced by the service's own seller and base price.
     const input: AddServiceBookingInput & { clientId: string } = {
       serviceId: 1,
       clientId: 'client-123',
-      providerId: 'provider-456',
+      providerId: 'attacker-999',
       scheduledDate: new Date('2025-12-25'),
       scheduledTimeSlot: '10:00-11:00',
       serviceLocation: { address: '123 Main St' },
-      agreedPrice: 100,
+      agreedPrice: 1,
       clientNotes: 'Test notes',
     };
 
@@ -379,11 +389,11 @@ describe('BookingsService', () => {
         data: {
           serviceId: input.serviceId,
           clientId: input.clientId,
-          providerId: input.providerId,
+          providerId: 'provider-456',
           scheduledDate: input.scheduledDate,
           scheduledTimeSlot: input.scheduledTimeSlot,
           serviceLocation: input.serviceLocation,
-          agreedPrice: input.agreedPrice,
+          agreedPrice: 100,
           clientNotes: input.clientNotes,
         },
       });
@@ -435,6 +445,30 @@ describe('BookingsService', () => {
         new InternalServerError('Error al crear la reserva'),
       );
     });
+
+    it("refuses booking a banned or unapproved provider's service", async () => {
+      mockPrismaService.service.findUnique.mockResolvedValue(mockService);
+      mockPrismaService.$queryRaw.mockResolvedValue([
+        { sellerId: 'provider-456' },
+      ]);
+
+      await expect(service.addServiceBooking(input)).rejects.toThrow(
+        new BadRequestError('Servicio no disponible'),
+      );
+      expect(mockPrismaService.serviceBooking.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses booking your own service', async () => {
+      mockPrismaService.service.findUnique.mockResolvedValue({
+        ...mockService,
+        sellerId: 'client-123',
+      });
+
+      await expect(service.addServiceBooking(input)).rejects.toThrow(
+        new BadRequestError('No puedes reservar tu propio servicio'),
+      );
+      expect(mockPrismaService.serviceBooking.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('updateServiceBooking', () => {
@@ -451,7 +485,11 @@ describe('BookingsService', () => {
       const updatedBooking = { ...mockBooking, ...input, id: 1 };
       mockPrismaService.serviceBooking.update.mockResolvedValue(updatedBooking);
 
-      const result = await service.updateServiceBooking(input);
+      const result = await service.updateServiceBooking({
+        input,
+        role: 'provider',
+        current: { status: 'PENDING' },
+      });
 
       expect(mockPrismaService.serviceBooking.update).toHaveBeenCalledWith({
         where: { id: 1 },
@@ -482,7 +520,11 @@ describe('BookingsService', () => {
         completedBooking,
       );
 
-      await service.updateServiceBooking(completedInput);
+      await service.updateServiceBooking({
+        input: completedInput,
+        role: 'provider',
+        current: { status: 'CONFIRMED' },
+      });
 
       expect(mockPrismaService.serviceBooking.update).toHaveBeenCalledWith({
         where: { id: 1 },
@@ -502,7 +544,11 @@ describe('BookingsService', () => {
 
       mockPrismaService.serviceBooking.update.mockResolvedValue(mockBooking);
 
-      await service.updateServiceBooking(partialInput);
+      await service.updateServiceBooking({
+        input: partialInput,
+        role: 'client',
+        current: { status: 'PENDING' },
+      });
 
       const callData =
         mockPrismaService.serviceBooking.update.mock.calls[0][0].data;
@@ -516,9 +562,67 @@ describe('BookingsService', () => {
         new Error('Database error'),
       );
 
-      await expect(service.updateServiceBooking(input)).rejects.toThrow(
+      await expect(
+        service.updateServiceBooking({
+          input,
+          role: 'provider',
+          current: { status: 'PENDING' },
+        }),
+      ).rejects.toThrow(
         new InternalServerError('Error al actualizar la reserva'),
       );
+    });
+
+    it('refuses a client confirming or completing their own booking', async () => {
+      for (const status of ['CONFIRMED', 'COMPLETED']) {
+        await expect(
+          service.updateServiceBooking({
+            input: { id: '1', status },
+            role: 'client',
+            current: { status: 'PENDING' },
+          }),
+        ).rejects.toBeInstanceOf(ForbiddenError);
+      }
+      expect(mockPrismaService.serviceBooking.update).not.toHaveBeenCalled();
+    });
+
+    it('refuses completing a booking the provider never confirmed', async () => {
+      await expect(
+        service.updateServiceBooking({
+          input: { id: '1', status: 'COMPLETED' },
+          role: 'provider',
+          current: { status: 'PENDING' },
+        }),
+      ).rejects.toBeInstanceOf(BadRequestError);
+      expect(mockPrismaService.serviceBooking.update).not.toHaveBeenCalled();
+    });
+
+    it('refuses writing the payment status or cancelling through an update', async () => {
+      await expect(
+        service.updateServiceBooking({
+          input: { id: '1', paymentStatus: 'PAID' },
+          role: 'provider',
+          current: { status: 'CONFIRMED' },
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenError);
+      await expect(
+        service.updateServiceBooking({
+          input: { id: '1', status: 'CANCELLED', cancelledBy: 'PROVIDER' },
+          role: 'provider',
+          current: { status: 'CONFIRMED' },
+        }),
+      ).rejects.toBeInstanceOf(BadRequestError);
+      expect(mockPrismaService.serviceBooking.update).not.toHaveBeenCalled();
+    });
+
+    it('refuses any edit to a closed booking', async () => {
+      await expect(
+        service.updateServiceBooking({
+          input: { id: '1', providerNotes: 'tarde' },
+          role: 'provider',
+          current: { status: 'COMPLETED' },
+        }),
+      ).rejects.toBeInstanceOf(BadRequestError);
     });
   });
 
@@ -635,6 +739,8 @@ describe('BookingsService', () => {
       mockPrismaService.service.findUnique.mockResolvedValue({
         id: 1,
         isActive: true,
+        sellerId: 'provider-456',
+        basePrice: 15000,
         name: 'Reparación de bicicletas',
       });
       mockPrismaService.serviceBooking.create.mockResolvedValue(mockBooking);
@@ -664,9 +770,10 @@ describe('BookingsService', () => {
       mockPrismaService.serviceBooking.update.mockResolvedValue(mockBooking);
 
       await service.updateServiceBooking({
-        id: '1',
-        status: 'CONFIRMED',
-      } as never);
+        input: { id: '1', status: 'CONFIRMED' },
+        role: 'provider',
+        current: { status: 'PENDING' },
+      });
       await flush();
 
       expect(notified()).toEqual([
@@ -681,9 +788,10 @@ describe('BookingsService', () => {
       mockPrismaService.serviceBooking.update.mockResolvedValue(mockBooking);
 
       await service.updateServiceBooking({
-        id: '1',
-        scheduledTimeSlot: '11:00-12:00',
-      } as never);
+        input: { id: '1', scheduledTimeSlot: '11:00-12:00' },
+        role: 'provider',
+        current: { status: 'CONFIRMED' },
+      });
       await flush();
 
       expect(mockUsersClient.notify).not.toHaveBeenCalled();

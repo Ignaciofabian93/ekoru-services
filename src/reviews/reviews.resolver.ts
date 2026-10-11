@@ -2,12 +2,49 @@ import { Resolver, Query, Mutation, Args, Int, ID } from '@nestjs/graphql';
 import { ReviewsService } from './reviews.service.js';
 import { ServiceReview, ServiceReviewConnection } from './entities/index.js';
 import { AddServiceReviewInput } from './dto/index.js';
-import { CurrentSeller } from '../common/decorators/index.js';
+import { CurrentAdmin, CurrentSeller } from '../common/decorators/index.js';
 import { UnauthorizedError } from '../common/exceptions/index.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { assertAdminCan } from '../common/admin-access.js';
 
 @Resolver(() => ServiceReview)
 export class ReviewsResolver {
-  constructor(private readonly reviewsService: ReviewsService) {}
+  constructor(
+    private readonly reviewsService: ReviewsService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  /** Moderation list (ADM-4): platform admins with MODERATE_CONTENT. */
+  @Query(() => ServiceReviewConnection, { name: 'adminServiceReviews' })
+  async adminServiceReviews(
+    @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
+    @Args('pageSize', { type: () => Int, defaultValue: 20 }) pageSize: number,
+    @Args('serviceId', { type: () => Int, nullable: true }) serviceId?: number,
+    @Args('providerId', { type: () => ID, nullable: true }) providerId?: string,
+    @Args('reviewerId', { type: () => ID, nullable: true }) reviewerId?: string,
+    @Args('rating', { type: () => Int, nullable: true }) rating?: number,
+    @CurrentAdmin() adminId?: string,
+  ) {
+    await assertAdminCan(this.prisma, adminId, 'MODERATE_CONTENT');
+    return this.reviewsService.getReviewsForModeration({
+      page,
+      pageSize,
+      serviceId,
+      providerId,
+      reviewerId,
+      rating,
+    });
+  }
+
+  /** A moderator removes any review; the rating is recomputed (ADM-4). */
+  @Mutation(() => Boolean, { name: 'deleteServiceReviewByAdmin' })
+  async deleteServiceReviewByAdmin(
+    @Args('id', { type: () => Int }) id: number,
+    @CurrentAdmin() adminId?: string,
+  ) {
+    await assertAdminCan(this.prisma, adminId, 'MODERATE_CONTENT');
+    return this.reviewsService.deleteReviewAsModerator(id);
+  }
 
   @Query(() => ServiceReviewConnection, { name: 'getServiceReviews' })
   async getServiceReviews(

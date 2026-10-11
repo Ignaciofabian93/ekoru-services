@@ -4,6 +4,7 @@ import {
   BadRequestError,
   ForbiddenError,
   InternalServerError,
+  NotFoundError,
 } from '../common/exceptions/index.js';
 import {
   calculatePrismaParams,
@@ -210,6 +211,65 @@ export class ReviewsService {
    * at read time, so only the average has to be refreshed — otherwise the star
    * rating on the listing would never move no matter how many reviews land.
    */
+  /**
+   * Every service review, newest first, for moderation (ADM-4). Filters by
+   * service, provider (the service's seller), reviewer and rating.
+   */
+  async getReviewsForModeration({
+    page,
+    pageSize,
+    serviceId,
+    providerId,
+    reviewerId,
+    rating,
+  }: {
+    page: number;
+    pageSize: number;
+    serviceId?: number;
+    providerId?: string;
+    reviewerId?: string;
+    rating?: number;
+  }) {
+    const { skip, take } = calculatePrismaParams(page, pageSize);
+    const where = {
+      ...(serviceId != null && { serviceId }),
+      ...(reviewerId && { reviewerId }),
+      ...(rating != null && { rating }),
+      ...(providerId && { service: { sellerId: providerId } }),
+    };
+    const [count, reviews] = await Promise.all([
+      this.prisma.serviceReview.count({ where }),
+      this.prisma.serviceReview.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+        include: { service: true },
+      }),
+    ]);
+    return createPaginatedResponse(
+      reviews.map((r) => ({ ...r, reviewer: { id: r.reviewerId } })),
+      count,
+      page,
+      pageSize,
+    );
+  }
+
+  /**
+   * A moderator removes a review (ADM-4) and the service's rating is
+   * recomputed. The resolver checks MODERATE_CONTENT.
+   */
+  async deleteReviewAsModerator(id: number): Promise<boolean> {
+    const review = await this.prisma.serviceReview.findUnique({
+      where: { id },
+      select: { serviceId: true },
+    });
+    if (!review) throw new NotFoundError('Reseña no encontrada');
+    await this.prisma.serviceReview.delete({ where: { id } });
+    await this.recomputeAverageRating(review.serviceId);
+    return true;
+  }
+
   private async recomputeAverageRating(serviceId: number): Promise<void> {
     const { _avg } = await this.prisma.serviceReview.aggregate({
       where: { serviceId },

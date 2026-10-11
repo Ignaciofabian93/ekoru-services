@@ -26,9 +26,17 @@ export class AddQuotationInput {
   @IsInt()
   serviceId: number;
 
-  @Field(() => String)
+  /**
+   * Ignored: the provider is the service's seller. Optional only so a web
+   * bundle from before that change still validates.
+   */
+  @Field(() => String, {
+    nullable: true,
+    description: "Ignored. The provider is the service's seller.",
+  })
+  @IsOptional()
   @IsString()
-  providerId: string;
+  providerId?: string;
 
   @Field(() => String)
   @IsString()
@@ -38,7 +46,15 @@ export class AddQuotationInput {
   @IsString()
   description: string;
 
-  @Field(() => Float, { nullable: true })
+  /**
+   * Ignored: only the provider prices a quotation (updateQuotation). A client
+   * who could set it could accept their own price. A budget goes in
+   * `clientNotes`.
+   */
+  @Field(() => Float, {
+    nullable: true,
+    description: 'Ignored. Only the provider prices a quotation.',
+  })
   @IsOptional()
   @IsNumber()
   estimatedPrice?: number;

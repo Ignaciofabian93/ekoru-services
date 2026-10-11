@@ -4,7 +4,8 @@ import {
   IsOptional,
   IsNumber,
   IsDate,
-  IsJSON,
+  IsIn,
+  IsObject,
 } from 'class-validator';
 import { GraphQLJSON } from 'graphql-scalars';
 
@@ -26,7 +27,7 @@ export class UpdateServiceBookingInput {
 
   @Field(() => GraphQLJSON, { nullable: true })
   @IsOptional()
-  @IsJSON()
+  @IsObject()
   serviceLocation?: any;
 
   @Field(() => Float, { nullable: true })
@@ -41,8 +42,15 @@ export class UpdateServiceBookingInput {
 
   @Field(() => String, { nullable: true })
   @IsOptional()
-  @IsString()
-  status?: string; // PENDING, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED
+  @IsIn([
+    'PENDING',
+    'CONFIRMED',
+    'IN_PROGRESS',
+    'COMPLETED',
+    'NO_SHOW',
+    'CANCELLED',
+  ])
+  status?: string; // the provider moves it; see booking-rules.ts
 
   @Field(() => String, { nullable: true })
   @IsOptional()

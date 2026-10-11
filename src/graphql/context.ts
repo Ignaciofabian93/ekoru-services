@@ -100,6 +100,9 @@ export function createGraphQLContext(
     adminType,
     adminSellerId,
     token,
+    // Set only by direct server-to-server callers (ekoru-transactions). The
+    // gateway never forwards it, so it cannot arrive from a browser.
+    internalSecret: req.headers['x-internal-secret'] as string | undefined,
   };
 }
 

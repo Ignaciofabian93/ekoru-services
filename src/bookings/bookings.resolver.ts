@@ -5,7 +5,12 @@ import {
   AddServiceBookingInput,
   UpdateServiceBookingInput,
 } from './dto/index.js';
-import { CurrentSeller } from '../common/decorators/index.js';
+import { CurrentAdmin, CurrentSeller } from '../common/decorators/index.js';
+import {
+  assertBookingCompletable,
+  assertBookingOpen,
+  bookingRole,
+} from './booking-rules.js';
 import {
   ForbiddenError,
   NotFoundError,
@@ -16,17 +21,35 @@ import {
 export class BookingsResolver {
   constructor(private readonly bookingsService: BookingsService) {}
 
+  /** The booking's client or provider, or a platform admin with MANAGE_ORDERS. */
   @Query(() => ServiceBooking, { name: 'getServiceBooking', nullable: true })
-  async getServiceBooking(@Args('id', { type: () => ID }) id: string) {
-    return this.bookingsService.getServiceBooking(parseInt(id, 10));
+  async getServiceBooking(
+    @Args('id', { type: () => ID }) id: string,
+    @CurrentSeller() sellerId?: string,
+    @CurrentAdmin() adminId?: string,
+  ) {
+    if (!sellerId && !adminId) {
+      throw new UnauthorizedError('Debes iniciar sesión');
+    }
+    const booking = await this.bookingsService.getServiceBooking(
+      parseInt(id, 10),
+    );
+    if (bookingRole(booking, sellerId)) return booking;
+    if (await this.bookingsService.isOrdersAdmin(adminId)) return booking;
+    throw new ForbiddenError('No tienes acceso a esta reserva');
   }
+
+  // The four lists below take an arbitrary client, provider or service, so
+  // they are for the panel only (MANAGE_ORDERS). Clients use `my*`.
 
   @Query(() => ServiceBookingConnection, { name: 'getServiceBookings' })
   async getServiceBookings(
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
     @Args('status', { type: () => String, nullable: true }) status?: string,
+    @CurrentAdmin() adminId?: string,
   ) {
+    await this.bookingsService.assertOrdersAdmin(adminId);
     return this.bookingsService.getServiceBookings({ page, pageSize, status });
   }
 
@@ -36,7 +59,9 @@ export class BookingsResolver {
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
     @Args('status', { type: () => String, nullable: true }) status?: string,
+    @CurrentAdmin() adminId?: string,
   ) {
+    await this.bookingsService.assertOrdersAdmin(adminId);
     return this.bookingsService.getServiceBookingsByClient({
       clientId,
       page,
@@ -53,7 +78,9 @@ export class BookingsResolver {
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
     @Args('status', { type: () => String, nullable: true }) status?: string,
+    @CurrentAdmin() adminId?: string,
   ) {
+    await this.bookingsService.assertOrdersAdmin(adminId);
     return this.bookingsService.getServiceBookingsByProvider({
       providerId,
       page,
@@ -69,7 +96,9 @@ export class BookingsResolver {
     @Args('serviceId', { type: () => ID }) serviceId: string,
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
+    @CurrentAdmin() adminId?: string,
   ) {
+    await this.bookingsService.assertOrdersAdmin(adminId);
     return this.bookingsService.getServiceBookingsByService({
       serviceId: parseInt(serviceId, 10),
       page,
@@ -128,22 +157,45 @@ export class BookingsResolver {
     return this.bookingsService.addServiceBooking({ ...input, clientId });
   }
 
+  /** Each side edits only its own fields; see booking-rules.ts. */
   @Mutation(() => ServiceBooking)
   async updateServiceBooking(
     @Args('input') input: UpdateServiceBookingInput,
     @CurrentSeller() sellerId: string,
   ) {
-    await this.assertParticipant(input.id, sellerId);
-    return this.bookingsService.updateServiceBooking(input);
+    const booking = await this.assertParticipant(input.id, sellerId);
+    return this.bookingsService.updateServiceBooking({
+      input,
+      role: bookingRole(booking, sellerId)!,
+      current: booking,
+    });
   }
 
+  /**
+   * The client or the provider cancels; so may an operator with
+   * MANAGE_ORDERS when the two disagree (ADM-5), in which case both are told.
+   */
   @Mutation(() => ServiceBooking)
   async cancelServiceBooking(
     @Args('id', { type: () => ID }) id: string,
     @Args('reason', { type: () => String }) reason: string,
     @CurrentSeller() sellerId: string,
+    @CurrentAdmin() adminId?: string,
   ) {
-    await this.assertParticipant(id, sellerId);
+    if (!sellerId && adminId) {
+      await this.bookingsService.assertOrdersAdmin(adminId);
+      const booking = await this.bookingsService.getServiceBooking(
+        parseInt(id, 10),
+      );
+      assertBookingOpen(booking.status);
+      return this.bookingsService.cancelServiceBooking({
+        id: parseInt(id, 10),
+        cancelledBy: 'ADMIN',
+        reason,
+      });
+    }
+    const booking = await this.assertParticipant(id, sellerId);
+    assertBookingOpen(booking.status);
     return this.bookingsService.cancelServiceBooking({
       id: parseInt(id, 10),
       // Who cancelled is a fact about the session, not a claim the caller makes.
@@ -163,6 +215,7 @@ export class BookingsResolver {
     if (booking.providerId !== sellerId) {
       throw new ForbiddenError('Solo el proveedor puede completar la reserva');
     }
+    assertBookingCompletable(booking.status);
     return this.bookingsService.completeServiceBooking(parseInt(id, 10));
   }
 

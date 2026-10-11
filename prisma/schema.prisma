@@ -240,6 +240,13 @@ model Quotation {
   previousVersions                    Json?
   priceBreakdown                      Json?
   revisionCount                       Int             @default(0)
+  // Stamped by ekoru-transactions through services' internal
+  // `markQuotationPaid` when the client's payment for this quotation is
+  // approved. `paidPaymentId` is that Payment's id (the Payment row also points
+  // back through `quotationId`). A paid quotation can no longer be cancelled or
+  // re-priced; undoing it is a refund.
+  paidAt                              DateTime?
+  paidPaymentId                       Int?
   service                             Service         @relation(fields: [serviceId], references: [id])
   serviceReview                       ServiceReview[]
 

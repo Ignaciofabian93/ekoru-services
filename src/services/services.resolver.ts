@@ -21,6 +21,8 @@ import { ServiceSubCategory } from '../serviceSubCategories/entities/index.js';
 import { AddServiceInput, UpdateServiceInput } from './dto/index.js';
 import { ServicePricing } from '../graphql/enums/index.js';
 import type { GraphQLContext } from '../types/index.js';
+import { NotFoundError } from '../common/exceptions/index.js';
+import { CurrentAdmin, CurrentSeller } from '../common/decorators/index.js';
 
 @Resolver(() => Service)
 export class ServicesResolver {
@@ -100,24 +102,51 @@ export class ServicesResolver {
     });
   }
 
+  /** Publishes as the signed-in seller, never as an id sent by the client. */
   @Mutation(() => Service)
-  async addService(@Args('input') input: AddServiceInput) {
-    return this.servicesService.addService(input);
+  async addService(
+    @Args('input') input: AddServiceInput,
+    @CurrentSeller() sellerId?: string,
+  ) {
+    return this.servicesService.addService({ input, sellerId });
   }
 
+  /** The provider, or a platform admin with MANAGE_PRODUCTS. */
   @Mutation(() => Service)
-  async updateService(@Args('input') input: UpdateServiceInput) {
-    return this.servicesService.updateService(input);
+  async updateService(
+    @Args('input') input: UpdateServiceInput,
+    @CurrentSeller() sellerId?: string,
+    @CurrentAdmin() adminId?: string,
+  ) {
+    return this.servicesService.updateService({ input, sellerId, adminId });
   }
 
+  /** The provider, or a platform admin with MANAGE_PRODUCTS. */
   @Mutation(() => Service)
-  async deleteService(@Args('id', { type: () => ID }) id: string) {
-    return this.servicesService.deleteService(parseInt(id, 10));
+  async deleteService(
+    @Args('id', { type: () => ID }) id: string,
+    @CurrentSeller() sellerId?: string,
+    @CurrentAdmin() adminId?: string,
+  ) {
+    return this.servicesService.deleteService({
+      id: parseInt(id, 10),
+      sellerId,
+      adminId,
+    });
   }
 
+  /** The provider, or a platform admin with MANAGE_PRODUCTS. */
   @Mutation(() => Service)
-  async toggleServiceActive(@Args('id', { type: () => ID }) id: string) {
-    return this.servicesService.toggleServiceActive(parseInt(id, 10));
+  async toggleServiceActive(
+    @Args('id', { type: () => ID }) id: string,
+    @CurrentSeller() sellerId?: string,
+    @CurrentAdmin() adminId?: string,
+  ) {
+    return this.servicesService.toggleServiceActive({
+      id: parseInt(id, 10),
+      sellerId,
+      adminId,
+    });
   }
 
   @Query(() => ServiceConnection, { name: 'getMyFavoriteServices' })
@@ -151,7 +180,16 @@ export class ServicesResolver {
    */
   @ResolveReference()
   async resolveReference(reference: { __typename: string; id: string }) {
-    return this.servicesService.getService(parseInt(String(reference.id), 10));
+    // Gone, or its provider is hidden: null rather than failing the whole
+    // search response.
+    try {
+      return await this.servicesService.getService(
+        parseInt(String(reference.id), 10),
+      );
+    } catch (error) {
+      if (error instanceof NotFoundError) return null;
+      throw error;
+    }
   }
 
   @ResolveField(() => Boolean, {

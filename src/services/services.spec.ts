@@ -1,7 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ServicesService } from './services.service';
+import { resetHiddenProviderCache } from '../common/seller-visibility';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotFoundError, InternalServerError } from '../common/exceptions/index';
+import {
+  NotFoundError,
+  InternalServerError,
+  UnauthorizedError,
+  ForbiddenError,
+} from '../common/exceptions/index';
 import { AddServiceInput, UpdateServiceInput } from './dto/index';
 import { ServicePricing } from '../graphql/enums/index';
 
@@ -17,7 +23,24 @@ describe('ServicesService', () => {
       update: jest.fn(),
       delete: jest.fn(),
     },
+    // Seller/BusinessProfile (publisher check) and Admin (SEC-8) are read
+    // with raw SQL, since ekoru-users owns them.
+    $queryRaw: jest.fn(),
   };
+
+  /** The rows `$queryRaw` returns for the publisher and admin checks. */
+  const approvedServicesBusiness = [
+    { isActive: true, approvalStatus: 'APPROVED', businessType: 'SERVICES' },
+  ];
+  const productsAdmin = [
+    {
+      adminType: 'PLATFORM',
+      role: 'MODERATOR',
+      permissions: ['MANAGE_PRODUCTS'],
+      isActive: true,
+      sellerId: null,
+    },
+  ];
 
   const mockService = {
     id: 1,
@@ -64,7 +87,21 @@ describe('ServicesService', () => {
     },
   ];
 
+  /** Providers the hidden-provider lookup returns (banned or unapproved). */
+  let hiddenProviders: { sellerId: string }[] = [];
+
   beforeEach(async () => {
+    hiddenProviders = [];
+    resetHiddenProviderCache();
+    // Tests that check publishers or admins replace this with mockResolvedValue.
+    mockPrismaService.$queryRaw.mockImplementation(
+      (strings: TemplateStringsArray) =>
+        Promise.resolve(
+          strings.join('?').includes('FROM "Service" sv')
+            ? hiddenProviders
+            : [],
+        ),
+    );
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ServicesService,
@@ -213,7 +250,7 @@ describe('ServicesService', () => {
       });
 
       expect(mockPrismaService.service.count).toHaveBeenCalledWith({
-        where: { sellerId: { not: 'seller-123' } },
+        where: { sellerId: { notIn: ['seller-123'] } },
       });
     });
 
@@ -428,11 +465,53 @@ describe('ServicesService', () => {
     });
   });
 
+  describe('hidden providers (banned, deactivated or unapproved)', () => {
+    beforeEach(() => {
+      hiddenProviders = [{ sellerId: 'banned-1' }];
+      mockPrismaService.service.count.mockResolvedValue(0);
+      mockPrismaService.service.findMany.mockResolvedValue([]);
+    });
+
+    it('leaves their services out of listings, with the viewer excluded too', async () => {
+      await service.getServices({
+        page: 1,
+        pageSize: 10,
+        excludeSellerId: 'me',
+      });
+      expect(mockPrismaService.service.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { sellerId: { notIn: ['banned-1', 'me'] } },
+        }),
+      );
+    });
+
+    it('shows their provider page empty', async () => {
+      const page = await service.getServicesBySeller({
+        sellerId: 'banned-1',
+        page: 1,
+        pageSize: 10,
+      });
+      expect(page.nodes).toEqual([]);
+      expect(mockPrismaService.service.findMany).not.toHaveBeenCalled();
+    });
+
+    it('treats their service page as not found', async () => {
+      mockPrismaService.service.findUnique.mockResolvedValue({
+        ...mockService,
+        sellerId: 'banned-1',
+        serviceReview: [],
+        _count: { serviceReview: 0 },
+      });
+      await expect(service.getService(1)).rejects.toBeInstanceOf(NotFoundError);
+    });
+  });
+
   describe('addService', () => {
+    // `sellerId` in the input is ignored: the publisher is the session.
     const input: AddServiceInput = {
       name: 'New Service',
       description: 'New Description',
-      sellerId: 'seller-123',
+      sellerId: 'attacker-999',
       subcategoryId: 1,
       pricingType: ServicePricing.FIXED,
       basePrice: 150,
@@ -443,10 +522,20 @@ describe('ServicesService', () => {
       isActive: true,
     };
 
+    const publish = (
+      i: AddServiceInput,
+      sellerId: string | undefined = 'seller-123',
+    ) => service.addService({ input: i, sellerId });
+
+    beforeEach(() => {
+      mockPrismaService.$queryRaw.mockResolvedValue(approvedServicesBusiness);
+    });
+
     it('should create a new service successfully', async () => {
       const createdService = {
         ...mockService,
         ...input,
+        sellerId: 'seller-123',
         id: 2,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -454,7 +543,7 @@ describe('ServicesService', () => {
 
       mockPrismaService.service.create.mockResolvedValue(createdService);
 
-      const result = await service.addService(input);
+      const result = await publish(input);
 
       expect(mockPrismaService.service.create).toHaveBeenCalledWith({
         data: {
@@ -467,7 +556,7 @@ describe('ServicesService', () => {
           duration: input.duration,
           images: input.images,
           tags: input.tags,
-          sellerId: input.sellerId,
+          sellerId: 'seller-123',
           isActive: input.isActive,
           updatedAt: expect.any(Date),
         },
@@ -492,7 +581,7 @@ describe('ServicesService', () => {
 
       mockPrismaService.service.create.mockResolvedValue(createdService);
 
-      await service.addService(inputWithoutTags);
+      await publish(inputWithoutTags);
 
       expect(mockPrismaService.service.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -514,7 +603,7 @@ describe('ServicesService', () => {
 
       mockPrismaService.service.create.mockResolvedValue(createdService);
 
-      await service.addService(inputWithoutActive);
+      await publish(inputWithoutActive);
 
       expect(mockPrismaService.service.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -543,7 +632,7 @@ describe('ServicesService', () => {
         id: 3,
       });
 
-      await service.addService(inputWithAvailability);
+      await publish(inputWithAvailability);
 
       expect(mockPrismaService.service.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -565,13 +654,144 @@ describe('ServicesService', () => {
         new Error('Database error'),
       );
 
-      await expect(service.addService(input)).rejects.toThrow(
+      await expect(publish(input)).rejects.toThrow(
         new InternalServerError('Error al crear el servicio'),
       );
+    });
+
+    it('refuses an anonymous caller', async () => {
+      await expect(
+        service.addService({ input, sellerId: undefined }),
+      ).rejects.toBeInstanceOf(UnauthorizedError);
+      expect(mockPrismaService.service.create).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [
+        'a person account (no business profile)',
+        [{ isActive: true, approvalStatus: null, businessType: null }],
+      ],
+      [
+        'a business EKORU has not approved',
+        [
+          {
+            isActive: true,
+            approvalStatus: 'PENDING',
+            businessType: 'SERVICES',
+          },
+        ],
+      ],
+      [
+        'a retail-only business',
+        [
+          {
+            isActive: true,
+            approvalStatus: 'APPROVED',
+            businessType: 'RETAIL',
+          },
+        ],
+      ],
+      [
+        'a banned or deactivated account',
+        [
+          {
+            isActive: false,
+            approvalStatus: 'APPROVED',
+            businessType: 'MIXED',
+          },
+        ],
+      ],
+      ['an unknown seller', []],
+    ])('refuses %s', async (_label, rows) => {
+      mockPrismaService.$queryRaw.mockResolvedValue(rows);
+
+      await expect(publish(input)).rejects.toBeInstanceOf(ForbiddenError);
+      expect(mockPrismaService.service.create).not.toHaveBeenCalled();
+    });
+
+    it('lets a MIXED business publish', async () => {
+      mockPrismaService.$queryRaw.mockResolvedValue([
+        { isActive: true, approvalStatus: 'APPROVED', businessType: 'MIXED' },
+      ]);
+      mockPrismaService.service.create.mockResolvedValue(mockService);
+
+      await expect(publish(input)).resolves.toBeDefined();
+    });
+  });
+
+  describe('service ownership (SRV-1)', () => {
+    beforeEach(() => {
+      mockPrismaService.service.findUnique.mockResolvedValue({
+        sellerId: 'seller-123',
+      });
+      mockPrismaService.service.delete.mockResolvedValue(mockService);
+    });
+
+    it("refuses another seller's edit, delete or toggle", async () => {
+      const other = { sellerId: 'seller-999' };
+      await expect(
+        service.updateService({ input: { id: '1', name: 'x' }, ...other }),
+      ).rejects.toBeInstanceOf(ForbiddenError);
+      await expect(
+        service.deleteService({ id: 1, ...other }),
+      ).rejects.toBeInstanceOf(ForbiddenError);
+      await expect(
+        service.toggleServiceActive({ id: 1, ...other }),
+      ).rejects.toBeInstanceOf(ForbiddenError);
+      expect(mockPrismaService.service.update).not.toHaveBeenCalled();
+      expect(mockPrismaService.service.delete).not.toHaveBeenCalled();
+    });
+
+    it('refuses an anonymous caller', async () => {
+      await expect(service.deleteService({ id: 1 })).rejects.toBeInstanceOf(
+        UnauthorizedError,
+      );
+    });
+
+    it('refuses an admin without MANAGE_PRODUCTS, a business admin included', async () => {
+      mockPrismaService.$queryRaw.mockResolvedValue([
+        {
+          adminType: 'BUSINESS',
+          role: 'SUPER_ADMIN',
+          permissions: ['MANAGE_PRODUCTS'],
+          isActive: true,
+          sellerId: 'seller-999',
+        },
+      ]);
+
+      await expect(
+        service.deleteService({ id: 1, adminId: 'admin-1' }),
+      ).rejects.toBeInstanceOf(ForbiddenError);
+      expect(mockPrismaService.service.delete).not.toHaveBeenCalled();
+    });
+
+    it('lets a platform admin with MANAGE_PRODUCTS act on any service', async () => {
+      mockPrismaService.$queryRaw.mockResolvedValue(productsAdmin);
+
+      await expect(
+        service.deleteService({ id: 1, adminId: 'admin-1' }),
+      ).resolves.toBeDefined();
+      expect(mockPrismaService.service.delete).toHaveBeenCalled();
+    });
+
+    it('throws NotFoundError for an unknown service', async () => {
+      mockPrismaService.service.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.deleteService({ id: 404, sellerId: 'seller-123' }),
+      ).rejects.toBeInstanceOf(NotFoundError);
     });
   });
 
   describe('updateService', () => {
+    beforeEach(() => {
+      mockPrismaService.service.findUnique.mockResolvedValue({
+        sellerId: 'seller-123',
+      });
+    });
+    const edit = (i: UpdateServiceInput) =>
+      service.updateService({ input: i, sellerId: 'seller-123' });
+
     const input: UpdateServiceInput = {
       id: '1',
       name: 'Updated Service',
@@ -590,7 +810,7 @@ describe('ServicesService', () => {
 
       mockPrismaService.service.update.mockResolvedValue(updatedService);
 
-      const result = await service.updateService(input);
+      const result = await edit(input);
 
       expect(mockPrismaService.service.update).toHaveBeenCalledWith({
         where: { id: 1 },
@@ -624,7 +844,7 @@ describe('ServicesService', () => {
 
       mockPrismaService.service.update.mockResolvedValue(updatedService);
 
-      await service.updateService(partialInput);
+      await edit(partialInput);
 
       const callData = mockPrismaService.service.update.mock.calls[0][0].data;
       expect(callData.name).toBe('Updated Name Only');
@@ -646,7 +866,7 @@ describe('ServicesService', () => {
 
       mockPrismaService.service.update.mockResolvedValue(updatedService);
 
-      await service.updateService(inputWithZeroPrice);
+      await edit(inputWithZeroPrice);
 
       const callData = mockPrismaService.service.update.mock.calls[0][0].data;
       expect(callData.basePrice).toBe(0);
@@ -669,7 +889,7 @@ describe('ServicesService', () => {
         _count: { serviceReview: 0 },
       });
 
-      await service.updateService(availabilityInput);
+      await edit(availabilityInput);
 
       const callData = mockPrismaService.service.update.mock.calls[0][0].data;
       expect(callData).toEqual({
@@ -688,17 +908,26 @@ describe('ServicesService', () => {
         new Error('Database error'),
       );
 
-      await expect(service.updateService(input)).rejects.toThrow(
+      await expect(edit(input)).rejects.toThrow(
         new InternalServerError('Error al actualizar el servicio'),
       );
     });
   });
 
   describe('deleteService', () => {
+    beforeEach(() => {
+      mockPrismaService.service.findUnique.mockResolvedValue({
+        sellerId: 'seller-123',
+      });
+    });
+
     it('should delete a service successfully', async () => {
       mockPrismaService.service.delete.mockResolvedValue(mockService);
 
-      const result = await service.deleteService(1);
+      const result = await service.deleteService({
+        id: 1,
+        sellerId: 'seller-123',
+      });
 
       expect(mockPrismaService.service.delete).toHaveBeenCalledWith({
         where: { id: 1 },
@@ -717,7 +946,9 @@ describe('ServicesService', () => {
         new Error('Database error'),
       );
 
-      await expect(service.deleteService(1)).rejects.toThrow(
+      await expect(
+        service.deleteService({ id: 1, sellerId: 'seller-123' }),
+      ).rejects.toThrow(
         new InternalServerError('Error al eliminar el servicio'),
       );
     });
@@ -732,10 +963,15 @@ describe('ServicesService', () => {
         _count: { serviceReview: 2 },
       };
 
-      mockPrismaService.service.findUnique.mockResolvedValue(activeService);
+      mockPrismaService.service.findUnique
+        .mockResolvedValueOnce({ sellerId: 'seller-123' })
+        .mockResolvedValueOnce(activeService);
       mockPrismaService.service.update.mockResolvedValue(toggledService);
 
-      const result = await service.toggleServiceActive(1);
+      const result = await service.toggleServiceActive({
+        id: 1,
+        sellerId: 'seller-123',
+      });
 
       expect(mockPrismaService.service.findUnique).toHaveBeenCalledWith({
         where: { id: 1 },
@@ -757,10 +993,15 @@ describe('ServicesService', () => {
         _count: { serviceReview: 2 },
       };
 
-      mockPrismaService.service.findUnique.mockResolvedValue(inactiveService);
+      mockPrismaService.service.findUnique
+        .mockResolvedValueOnce({ sellerId: 'seller-123' })
+        .mockResolvedValueOnce(inactiveService);
       mockPrismaService.service.update.mockResolvedValue(toggledService);
 
-      const result = await service.toggleServiceActive(1);
+      const result = await service.toggleServiceActive({
+        id: 1,
+        sellerId: 'seller-123',
+      });
 
       expect(mockPrismaService.service.update).toHaveBeenCalledWith({
         where: { id: 1 },
@@ -773,17 +1014,19 @@ describe('ServicesService', () => {
     it('should throw NotFoundError when service does not exist', async () => {
       mockPrismaService.service.findUnique.mockResolvedValue(null);
 
-      await expect(service.toggleServiceActive(999)).rejects.toThrow(
-        new NotFoundError('Servicio no encontrado'),
-      );
+      await expect(
+        service.toggleServiceActive({ id: 999, sellerId: 'seller-123' }),
+      ).rejects.toThrow(new NotFoundError('Servicio no encontrado'));
     });
 
     it('should throw InternalServerError on database error', async () => {
-      mockPrismaService.service.findUnique.mockRejectedValue(
-        new Error('Database error'),
-      );
+      mockPrismaService.service.findUnique
+        .mockResolvedValueOnce({ sellerId: 'seller-123' })
+        .mockRejectedValueOnce(new Error('Database error'));
 
-      await expect(service.toggleServiceActive(1)).rejects.toThrow(
+      await expect(
+        service.toggleServiceActive({ id: 1, sellerId: 'seller-123' }),
+      ).rejects.toThrow(
         new InternalServerError('Error al cambiar el estado del servicio'),
       );
     });

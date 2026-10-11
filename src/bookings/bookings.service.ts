@@ -4,6 +4,8 @@ import { BookingStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { UsersClient, type NotificationType } from '../common/clients/index.js';
 import { awardServicePoints } from '../common/service-points.js';
+import { assertAdminCan, isAdminWith } from '../common/admin-access.js';
+import { hiddenProviderIds } from '../common/seller-visibility.js';
 import {
   NotFoundError,
   BadRequestError,
@@ -17,6 +19,7 @@ import {
   AddServiceBookingInput,
   UpdateServiceBookingInput,
 } from './dto/index.js';
+import { bookingUpdateData, type BookingRole } from './booking-rules.js';
 
 @Injectable()
 export class BookingsService {
@@ -27,6 +30,15 @@ export class BookingsService {
     private readonly users: UsersClient,
     private readonly config: ConfigService,
   ) {}
+
+  /** Bookings oversight is the panel's MANAGE_ORDERS screen (SEC-8). */
+  assertOrdersAdmin(adminId: string | undefined): Promise<string> {
+    return assertAdminCan(this.prisma, adminId, 'MANAGE_ORDERS');
+  }
+
+  isOrdersAdmin(adminId: string | undefined): Promise<boolean> {
+    return isAdminWith(this.prisma, adminId, 'MANAGE_ORDERS');
+  }
 
   /**
    * Tells one party what just happened to a booking.
@@ -267,19 +279,31 @@ export class BookingsService {
         where: { id: input.serviceId },
       });
 
-      if (!service || !service.isActive) {
+      if (
+        !service ||
+        !service.isActive ||
+        (await hiddenProviderIds(this.prisma)).includes(service.sellerId)
+      ) {
         throw new BadRequestError('Servicio no disponible');
       }
+      if (service.sellerId === input.clientId) {
+        throw new BadRequestError('No puedes reservar tu propio servicio');
+      }
 
+      // The provider is the service's seller and the price starts at its base
+      // price, whatever the client sent: a booking that named its provider
+      // could send requests (and eco-points) to anyone, and one that named its
+      // price could set it to zero. The provider adjusts the price before
+      // confirming.
       const booking = await this.prisma.serviceBooking.create({
         data: {
           serviceId: input.serviceId,
           clientId: input.clientId,
-          providerId: input.providerId,
+          providerId: service.sellerId,
           scheduledDate: input.scheduledDate,
           scheduledTimeSlot: input.scheduledTimeSlot,
           serviceLocation: input.serviceLocation || {},
-          agreedPrice: input.agreedPrice,
+          agreedPrice: service.basePrice ?? 0,
           clientNotes: input.clientNotes,
         },
       });
@@ -298,50 +322,41 @@ export class BookingsService {
     }
   }
 
-  async updateServiceBooking(input: UpdateServiceBookingInput) {
+  /**
+   * A participant's edit. `role` and `current` come from the resolver's
+   * participant check; booking-rules.ts decides which fields that side owns
+   * and which status moves are allowed, before anything is written.
+   */
+  async updateServiceBooking({
+    input,
+    role,
+    current,
+  }: {
+    input: UpdateServiceBookingInput;
+    role: BookingRole;
+    current: { status: string };
+  }) {
+    const data = bookingUpdateData(role, current, input);
+    const changedStatus =
+      input.status != null && input.status !== current.status
+        ? input.status
+        : null;
     try {
       const id = parseInt(input.id, 10);
 
       const booking = await this.prisma.serviceBooking.update({
         where: { id },
-        data: {
-          ...(input.scheduledDate && { scheduledDate: input.scheduledDate }),
-          ...(input.scheduledTimeSlot && {
-            scheduledTimeSlot: input.scheduledTimeSlot,
-          }),
-          ...(input.serviceLocation && {
-            serviceLocation: input.serviceLocation,
-          }),
-          ...(input.agreedPrice !== undefined && {
-            agreedPrice: input.agreedPrice,
-          }),
-          ...(input.paymentStatus && { paymentStatus: input.paymentStatus }),
-          ...(input.status && { status: input.status }),
-          ...(input.clientNotes && { clientNotes: input.clientNotes }),
-          ...(input.providerNotes && { providerNotes: input.providerNotes }),
-          ...(input.cancellationReason && {
-            cancellationReason: input.cancellationReason,
-          }),
-          ...(input.cancelledBy && { cancelledBy: input.cancelledBy }),
-          ...(input.status === 'COMPLETED' && { completedAt: new Date() }),
-          updatedAt: new Date(),
-        },
+        data,
       });
 
       // Only a status change is worth telling someone about; rescheduling
       // and note edits are not. The client is the one who cares that their
       // booking was confirmed or closed out.
-      if (input.status === 'CONFIRMED') {
+      if (changedStatus === 'CONFIRMED') {
         void this.notify(booking, 'BOOKING_CONFIRMED', booking.clientId);
-      } else if (input.status === 'COMPLETED') {
+      } else if (changedStatus === 'COMPLETED') {
         void this.notify(booking, 'BOOKING_COMPLETED', booking.clientId);
         void this.awardPoints(booking);
-      } else if (input.status === 'CANCELLED') {
-        void this.notifyCancelled(
-          booking,
-          input.cancelledBy ?? null,
-          input.cancellationReason,
-        );
       }
 
       return booking;

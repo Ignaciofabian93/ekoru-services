@@ -5,7 +5,7 @@ import {
   IsNumber,
   IsInt,
   IsDate,
-  IsJSON,
+  IsObject,
 } from 'class-validator';
 import { GraphQLJSON } from 'graphql-scalars';
 
@@ -23,9 +23,17 @@ export class AddServiceBookingInput {
   @IsInt()
   serviceId: number;
 
-  @Field(() => String)
+  /**
+   * Ignored: the provider is the service's seller. Optional only so a web
+   * bundle from before that change still validates.
+   */
+  @Field(() => String, {
+    nullable: true,
+    description: "Ignored. The provider is the service's seller.",
+  })
+  @IsOptional()
   @IsString()
-  providerId: string;
+  providerId?: string;
 
   @Field(() => Date)
   @IsDate()
@@ -38,12 +46,21 @@ export class AddServiceBookingInput {
 
   @Field(() => GraphQLJSON, { nullable: true })
   @IsOptional()
-  @IsJSON()
+  @IsObject()
   serviceLocation?: any; // {address, lat, lng, notes}
 
-  @Field(() => Float)
+  /**
+   * Ignored: a booking starts at the service's base price, and the provider
+   * adjusts it before confirming. A client cannot name their own price.
+   */
+  @Field(() => Float, {
+    nullable: true,
+    description:
+      "Ignored. A booking starts at the service's base price; the provider adjusts it.",
+  })
+  @IsOptional()
   @IsNumber()
-  agreedPrice: number;
+  agreedPrice?: number;
 
   @Field(() => String, { nullable: true })
   @IsOptional()

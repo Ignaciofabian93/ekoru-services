@@ -3,8 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   NotFoundError,
+  BadRequestError,
   InternalServerError,
 } from '../common/exceptions/index.js';
+import { assertAdminCan, isAdminWith } from '../common/admin-access.js';
+import { hiddenProviderIds } from '../common/seller-visibility.js';
+import { quotationUpdateData, quotedPrice } from './quotation-rules.js';
 import {
   calculatePrismaParams,
   createPaginatedResponse,
@@ -23,6 +27,15 @@ export class QuotationsService {
     private readonly users: UsersClient,
     private readonly config: ConfigService,
   ) {}
+
+  /** Quotations oversight is the panel's MANAGE_ORDERS screen (SEC-8). */
+  assertOrdersAdmin(adminId: string | undefined): Promise<string> {
+    return assertAdminCan(this.prisma, adminId, 'MANAGE_ORDERS');
+  }
+
+  isOrdersAdmin(adminId: string | undefined): Promise<boolean> {
+    return isAdminWith(this.prisma, adminId, 'MANAGE_ORDERS');
+  }
 
   /**
    * Tells the other party what just happened to a quotation.
@@ -44,7 +57,7 @@ export class QuotationsService {
         sellerId: recipientId,
         type,
         relatedId: quotation.id,
-        actionUrl: base ? `${base}/profile/quotations` : null,
+        actionUrl: base ? `${base}/profile/quotes` : null,
         data: {
           // The actor is whoever is NOT being notified — users resolves this to
           // a display name for the copy.
@@ -88,6 +101,9 @@ export class QuotationsService {
           expiresAt: true,
           acceptedAt: true,
           completedAt: true,
+          declineReason: true,
+          cancellationReason: true,
+          paidAt: true,
           // Whole row: `Service` declares non-nullable scalars (images, tags…)
           // and a hand-picked subset makes any client selecting one of them
           // fail with "Cannot return null for non-nullable field".
@@ -261,15 +277,30 @@ export class QuotationsService {
   }
 
   async addQuotation(input: AddQuotationInput & { clientId: string }) {
+    const service = await this.prisma.service.findUnique({
+      where: { id: input.serviceId },
+      select: { sellerId: true, isActive: true },
+    });
+    if (
+      !service?.isActive ||
+      (await hiddenProviderIds(this.prisma)).includes(service.sellerId)
+    ) {
+      throw new BadRequestError('Servicio no disponible');
+    }
+    if (service.sellerId === input.clientId) {
+      throw new BadRequestError('No puedes cotizar tu propio servicio');
+    }
     try {
+      // The provider is the service's seller, whatever the client sent, and
+      // the price is the provider's to give (updateQuotation): a client who
+      // could set it could accept their own price.
       const quotation = await this.prisma.quotation.create({
         data: {
           serviceId: input.serviceId,
           clientId: input.clientId,
-          providerId: input.providerId,
+          providerId: service.sellerId,
           title: input.title,
           description: input.description,
-          estimatedPrice: input.estimatedPrice,
           estimatedDuration: input.estimatedDuration,
           clientNotes: input.clientNotes,
           attachments: input.attachments || [],
@@ -295,6 +326,9 @@ export class QuotationsService {
           expiresAt: true,
           acceptedAt: true,
           completedAt: true,
+          declineReason: true,
+          cancellationReason: true,
+          paidAt: true,
           // Whole row: `Service` declares non-nullable scalars (images, tags…)
           // and a hand-picked subset makes any client selecting one of them
           // fail with "Cannot return null for non-nullable field".
@@ -315,29 +349,24 @@ export class QuotationsService {
     }
   }
 
-  async updateQuotation(input: UpdateQuotationInput) {
+  /**
+   * The provider's reply. `current` comes from the resolver's provider check;
+   * quotation-rules.ts decides what may change (prices only while PENDING).
+   */
+  async updateQuotation({
+    input,
+    current,
+  }: {
+    input: UpdateQuotationInput;
+    current: { status: string; paidAt?: Date | null };
+  }) {
+    const data = quotationUpdateData(current, input);
     try {
       const id = parseInt(input.id, 10);
 
       const quotation = await this.prisma.quotation.update({
         where: { id },
-        data: {
-          ...(input.estimatedPrice !== undefined && {
-            estimatedPrice: input.estimatedPrice,
-          }),
-          ...(input.finalPrice !== undefined && {
-            finalPrice: input.finalPrice,
-          }),
-          ...(input.estimatedDuration !== undefined && {
-            estimatedDuration: input.estimatedDuration,
-          }),
-          ...(input.status && { status: input.status }),
-          ...(input.clientNotes && { clientNotes: input.clientNotes }),
-          ...(input.providerNotes && { providerNotes: input.providerNotes }),
-          ...(input.attachments && { attachments: input.attachments }),
-          ...(input.expiresAt && { expiresAt: input.expiresAt }),
-          updatedAt: new Date(),
-        },
+        data,
         select: {
           id: true,
           serviceId: true,
@@ -357,6 +386,9 @@ export class QuotationsService {
           expiresAt: true,
           acceptedAt: true,
           completedAt: true,
+          declineReason: true,
+          cancellationReason: true,
+          paidAt: true,
           // Whole row: `Service` declares non-nullable scalars (images, tags…)
           // and a hand-picked subset makes any client selecting one of them
           // fail with "Cannot return null for non-nullable field".
@@ -364,25 +396,14 @@ export class QuotationsService {
         },
       });
 
-      // Provider-side pricing fields present means the provider answered,
-      // so the client is the one who needs to hear about it. The resolver
-      // carries no caller identity, so this is inferred from the payload.
+      // Only the provider replies (resolver), so the client hears about a
+      // new price or note. Status moves have their own mutations.
       if (
-        input.finalPrice !== undefined ||
-        input.estimatedPrice !== undefined ||
-        input.providerNotes !== undefined
+        input.finalPrice != null ||
+        input.estimatedPrice != null ||
+        input.providerNotes != null
       ) {
         this.notify(quotation, 'QUOTATION_RECEIVED', quotation.clientId);
-      }
-      // Completing through the general update earns the same points as
-      // completeQuotation; the users engine pays each quotation once.
-      if (input.status === QuotationStatus.COMPLETED) {
-        void awardServicePoints(this.prisma, this.users, {
-          serviceId: quotation.serviceId,
-          clientId: quotation.clientId,
-          providerId: quotation.providerId,
-          reference: `quotation:${quotation.id}`,
-        });
       }
       return {
         ...quotation,
@@ -423,6 +444,9 @@ export class QuotationsService {
           expiresAt: true,
           acceptedAt: true,
           completedAt: true,
+          declineReason: true,
+          cancellationReason: true,
+          paidAt: true,
           // Whole row: `Service` declares non-nullable scalars (images, tags…)
           // and a hand-picked subset makes any client selecting one of them
           // fail with "Cannot return null for non-nullable field".
@@ -449,7 +473,7 @@ export class QuotationsService {
         where: { id },
         data: {
           status: 'DECLINED',
-          providerNotes: reason || undefined,
+          declineReason: reason || undefined,
           updatedAt: new Date(),
         },
         select: {
@@ -471,6 +495,9 @@ export class QuotationsService {
           expiresAt: true,
           acceptedAt: true,
           completedAt: true,
+          declineReason: true,
+          cancellationReason: true,
+          paidAt: true,
           // Whole row: `Service` declares non-nullable scalars (images, tags…)
           // and a hand-picked subset makes any client selecting one of them
           // fail with "Cannot return null for non-nullable field".
@@ -478,12 +505,7 @@ export class QuotationsService {
         },
       });
 
-      // Either party can decline and this layer has no caller identity, so
-      // both are told the quotation is dead. Narrow this to the counterpart
-      // once the resolver carries @CurrentSeller.
-      this.notify(quotation, 'QUOTATION_DECLINED', quotation.clientId, {
-        note: reason ?? '',
-      });
+      // Only the client declines (resolver), so the provider is told.
       this.notify(quotation, 'QUOTATION_DECLINED', quotation.providerId, {
         note: reason ?? '',
       });
@@ -526,6 +548,9 @@ export class QuotationsService {
           expiresAt: true,
           acceptedAt: true,
           completedAt: true,
+          declineReason: true,
+          cancellationReason: true,
+          paidAt: true,
           // Whole row: `Service` declares non-nullable scalars (images, tags…)
           // and a hand-picked subset makes any client selecting one of them
           // fail with "Cannot return null for non-nullable field".
@@ -552,13 +577,21 @@ export class QuotationsService {
     }
   }
 
-  async cancelQuotation({ id, reason }: { id: number; reason?: string }) {
+  async cancelQuotation({
+    id,
+    reason,
+    cancelledBy,
+  }: {
+    id: number;
+    reason?: string;
+    cancelledBy: string;
+  }) {
     try {
       const quotation = await this.prisma.quotation.update({
         where: { id },
         data: {
           status: 'CANCELLED',
-          providerNotes: reason || undefined,
+          cancellationReason: reason || undefined,
           updatedAt: new Date(),
         },
         select: {
@@ -580,6 +613,9 @@ export class QuotationsService {
           expiresAt: true,
           acceptedAt: true,
           completedAt: true,
+          declineReason: true,
+          cancellationReason: true,
+          paidAt: true,
           // Whole row: `Service` declares non-nullable scalars (images, tags…)
           // and a hand-picked subset makes any client selecting one of them
           // fail with "Cannot return null for non-nullable field".
@@ -587,13 +623,19 @@ export class QuotationsService {
         },
       });
 
-      // Same reasoning as decline: no caller identity here.
-      this.notify(quotation, 'QUOTATION_DECLINED', quotation.clientId, {
-        note: reason ?? '',
-      });
-      this.notify(quotation, 'QUOTATION_DECLINED', quotation.providerId, {
-        note: reason ?? '',
-      });
+      // The side that did not cancel is the one to tell; when an operator
+      // cancelled, both are.
+      const recipients =
+        cancelledBy === quotation.clientId
+          ? [quotation.providerId]
+          : cancelledBy === quotation.providerId
+            ? [quotation.clientId]
+            : [quotation.clientId, quotation.providerId];
+      for (const recipient of recipients) {
+        this.notify(quotation, 'QUOTATION_DECLINED', recipient, {
+          note: reason ?? '',
+        });
+      }
       return {
         ...quotation,
         client: { id: quotation.clientId },
@@ -603,6 +645,73 @@ export class QuotationsService {
       this.logger.error('Error al cancelar la cotización:', error);
       throw new InternalServerError('Error al cancelar la cotización');
     }
+  }
+
+  // ─── Payments (SRV-3) ──────────────────────────────────────────────────────
+  // Called by ekoru-transactions only, behind INTERNAL_SERVICE_SECRET.
+
+  /** What to charge for a quotation, and whether it can be charged. */
+  async getQuotationCharge(id: number) {
+    const q = await this.prisma.quotation.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        clientId: true,
+        providerId: true,
+        estimatedPrice: true,
+        finalPrice: true,
+        paidAt: true,
+        paidPaymentId: true,
+      },
+    });
+    if (!q) throw new NotFoundError('Cotización no encontrada');
+    return {
+      id: q.id,
+      title: q.title,
+      status: q.status,
+      clientId: q.clientId,
+      providerId: q.providerId,
+      amount: quotedPrice(q),
+      currency: 'CLP',
+      paid: q.paidAt != null,
+      paidAt: q.paidAt,
+      paidPaymentId: q.paidPaymentId,
+    };
+  }
+
+  /**
+   * Stamps a quotation paid. Idempotent for the same payment, so a retried
+   * webhook is harmless; a second, different payment is refused so
+   * ekoru-transactions refunds it instead of charging twice.
+   */
+  async markQuotationPaid({
+    id,
+    paymentId,
+  }: {
+    id: number;
+    paymentId: number;
+  }) {
+    const charge = await this.getQuotationCharge(id);
+    if (charge.paid) {
+      if (charge.paidPaymentId === paymentId) return charge;
+      throw new BadRequestError(
+        `La cotización ${id} ya fue pagada con el pago ${charge.paidPaymentId}`,
+      );
+    }
+    if (!['ACCEPTED', 'COMPLETED'].includes(charge.status)) {
+      throw new BadRequestError(
+        `La cotización ${id} está ${charge.status}; solo se paga una cotización aceptada`,
+      );
+    }
+    // Conditional on "still unpaid", so two concurrent calls cannot both win.
+    const { count } = await this.prisma.quotation.updateMany({
+      where: { id, paidAt: null },
+      data: { paidAt: new Date(), paidPaymentId: paymentId },
+    });
+    if (count === 0) return this.markQuotationPaid({ id, paymentId });
+    return this.getQuotationCharge(id);
   }
 
   async deleteQuotation(id: number): Promise<boolean> {

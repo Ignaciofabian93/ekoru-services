@@ -57,9 +57,18 @@ export class AddServiceInput {
   @IsString({ each: true })
   tags?: string[];
 
-  @Field(() => String)
+  /**
+   * Ignored: the publisher is always the signed-in seller (SRV-1). Kept
+   * optional only so a web bundle cached from before that change still
+   * validates; remove once no client sends it.
+   */
+  @Field(() => String, {
+    nullable: true,
+    description: 'Ignored. The publisher is the signed-in seller.',
+  })
+  @IsOptional()
   @IsString()
-  sellerId: string;
+  sellerId?: string;
 
   @Field(() => Boolean, { nullable: true })
   @IsOptional()

@@ -77,10 +77,13 @@ export class AdminServicesResolver {
     return this.adminServicesService.bulkUpsertServices({ adminId, rows });
   }
 
+  // Named apart from the provider-facing `deleteService` (services resolver):
+  // two root fields with one name collapse into one, and the public one won,
+  // so the panel's delete failed validation.
   @Mutation(() => Boolean, {
-    name: 'deleteService',
+    name: 'deleteServiceByAdmin',
     description:
-      'Hard-delete a service (cascades its media + FAQ). Fails while bookings/quotations reference it. Admins only.',
+      'Hard-delete a service (cascades its media + FAQ). Fails while bookings/quotations reference it. Platform admins with MANAGE_PRODUCTS.',
   })
   deleteService(
     @Args('id', { type: () => Int }) id: number,

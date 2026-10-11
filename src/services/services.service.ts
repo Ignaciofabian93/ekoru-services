@@ -3,8 +3,11 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import {
   NotFoundError,
   UnauthorizedError,
+  ForbiddenError,
   InternalServerError,
 } from '../common/exceptions/index.js';
+import { assertAdminCan } from '../common/admin-access.js';
+import { hiddenProviderIds } from '../common/seller-visibility.js';
 import {
   calculatePrismaParams,
   createPaginatedResponse,
@@ -42,11 +45,24 @@ const serviceSelect = {
   isRemoteService: true,
 } as const;
 
+/** Business types whose sellers publish services (the web wizard's rule). */
+const SERVICE_BUSINESS_TYPES = ['SERVICES', 'MIXED'];
+
 @Injectable()
 export class ServicesService {
   private readonly logger = new Logger(ServicesService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Leaves out services of hidden providers (banned, deactivated or not an
+   * approved business), and the viewer's own services when given.
+   */
+  private async sellerFilter(excludeSellerId?: string) {
+    const hidden = await hiddenProviderIds(this.prisma);
+    const notIn = excludeSellerId ? [...hidden, excludeSellerId] : hidden;
+    return notIn.length ? { sellerId: { notIn } } : {};
+  }
 
   async getService(id: number) {
     try {
@@ -66,7 +82,11 @@ export class ServicesService {
         },
       });
 
-      if (!service) {
+      // A banned, deactivated or unapproved provider's service is not shown.
+      if (
+        !service ||
+        (await hiddenProviderIds(this.prisma)).includes(service.sellerId)
+      ) {
         throw new NotFoundError('Servicio no encontrado');
       }
 
@@ -114,7 +134,7 @@ export class ServicesService {
       // to the seller in their profile via getServicesBySeller.
       const where = {
         ...(isActive !== undefined && { isActive }),
-        ...(excludeSellerId && { sellerId: { not: excludeSellerId } }),
+        ...(await this.sellerFilter(excludeSellerId)),
       };
       const count = await this.prisma.service.count({ where });
       const services = await this.prisma.service.findMany({
@@ -159,6 +179,9 @@ export class ServicesService {
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
 
+      if ((await hiddenProviderIds(this.prisma)).includes(sellerId)) {
+        return createPaginatedResponse([], 0, page, pageSize);
+      }
       const where = {
         sellerId,
         ...(isActive !== undefined && { isActive }),
@@ -214,7 +237,7 @@ export class ServicesService {
       const where = {
         subcategoryId,
         ...(isActive !== undefined && { isActive }),
-        ...(excludeSellerId && { sellerId: { not: excludeSellerId } }),
+        ...(await this.sellerFilter(excludeSellerId)),
       };
 
       const count = await this.prisma.service.count({ where });
@@ -291,7 +314,7 @@ export class ServicesService {
       const where = {
         subcategoryId: { in: subCategoryIds },
         ...(isActive !== undefined && { isActive }),
-        ...(excludeSellerId && { sellerId: { not: excludeSellerId } }),
+        ...(await this.sellerFilter(excludeSellerId)),
       };
 
       const count = await this.prisma.service.count({ where });
@@ -344,7 +367,7 @@ export class ServicesService {
       const where = {
         pricingType,
         ...(isActive !== undefined && { isActive }),
-        ...(excludeSellerId && { sellerId: { not: excludeSellerId } }),
+        ...(await this.sellerFilter(excludeSellerId)),
       };
 
       const count = await this.prisma.service.count({ where });
@@ -381,7 +404,80 @@ export class ServicesService {
     }
   }
 
-  async addService(input: AddServiceInput) {
+  /**
+   * Who may publish: an active business seller whose profile EKORU approved
+   * and whose business type offers services. Seller and BusinessProfile belong
+   * to ekoru-users, so they are read with raw SQL. A ban or deactivation sets
+   * `Seller.isActive` false, which covers tokens issued before it.
+   */
+  private async assertCanPublish(sellerId: string | undefined) {
+    if (!sellerId) {
+      throw new UnauthorizedError('Debes iniciar sesión para publicar');
+    }
+    const rows = await this.prisma.$queryRaw<
+      {
+        isActive: boolean;
+        approvalStatus: string | null;
+        businessType: string | null;
+      }[]
+    >`SELECT s."isActive",
+             bp."approvalStatus"::text AS "approvalStatus",
+             bp."businessType"::text   AS "businessType"
+        FROM "Seller" s
+        LEFT JOIN "BusinessProfile" bp ON bp."sellerId" = s."id"
+       WHERE s."id" = ${sellerId}
+       LIMIT 1`;
+    const seller = rows[0];
+    if (
+      !seller?.isActive ||
+      seller.approvalStatus !== 'APPROVED' ||
+      !SERVICE_BUSINESS_TYPES.includes(seller.businessType ?? '')
+    ) {
+      throw new ForbiddenError(
+        'Solo las empresas de servicios aprobadas por EKORU pueden publicar servicios',
+      );
+    }
+  }
+
+  /**
+   * The provider edits their own service; anyone else needs to be a platform
+   * admin with MANAGE_PRODUCTS (SEC-8). A bare admin token, a BUSINESS
+   * admin's included, is not enough.
+   */
+  private async assertOwnerOrServiceAdmin({
+    id,
+    sellerId,
+    adminId,
+  }: {
+    id: number;
+    sellerId?: string;
+    adminId?: string;
+  }) {
+    if (!sellerId && !adminId) {
+      throw new UnauthorizedError('Debes iniciar sesión');
+    }
+    const service = await this.prisma.service.findUnique({
+      where: { id },
+      select: { sellerId: true },
+    });
+    if (!service) throw new NotFoundError('Servicio no encontrado');
+    if (sellerId && service.sellerId === sellerId) return;
+    if (!adminId) {
+      throw new ForbiddenError(
+        'No puedes modificar el servicio de otro proveedor',
+      );
+    }
+    await assertAdminCan(this.prisma, adminId, 'MANAGE_PRODUCTS');
+  }
+
+  async addService({
+    input,
+    sellerId,
+  }: {
+    input: AddServiceInput;
+    sellerId?: string;
+  }) {
+    await this.assertCanPublish(sellerId);
     try {
       const service = await this.prisma.service.create({
         data: {
@@ -394,7 +490,7 @@ export class ServicesService {
           duration: input.duration,
           images: input.images,
           tags: input.tags || [],
-          sellerId: input.sellerId,
+          sellerId: sellerId!,
           isActive: input.isActive ?? true,
           availabilitySchedule: input.availabilitySchedule,
           isCurrentlyAvailable: input.isCurrentlyAvailable,
@@ -422,10 +518,18 @@ export class ServicesService {
     }
   }
 
-  async updateService(input: UpdateServiceInput) {
+  async updateService({
+    input,
+    sellerId,
+    adminId,
+  }: {
+    input: UpdateServiceInput;
+    sellerId?: string;
+    adminId?: string;
+  }) {
+    const id = parseInt(input.id, 10);
+    await this.assertOwnerOrServiceAdmin({ id, sellerId, adminId });
     try {
-      const id = parseInt(input.id, 10);
-
       const service = await this.prisma.service.update({
         where: { id },
         data: {
@@ -483,7 +587,16 @@ export class ServicesService {
     }
   }
 
-  async deleteService(id: number) {
+  async deleteService({
+    id,
+    sellerId,
+    adminId,
+  }: {
+    id: number;
+    sellerId?: string;
+    adminId?: string;
+  }) {
+    await this.assertOwnerOrServiceAdmin({ id, sellerId, adminId });
     try {
       const service = await this.prisma.service.delete({
         where: { id },
@@ -504,7 +617,16 @@ export class ServicesService {
     }
   }
 
-  async toggleServiceActive(id: number) {
+  async toggleServiceActive({
+    id,
+    sellerId,
+    adminId,
+  }: {
+    id: number;
+    sellerId?: string;
+    adminId?: string;
+  }) {
+    await this.assertOwnerOrServiceAdmin({ id, sellerId, adminId });
     try {
       const currentService = await this.prisma.service.findUnique({
         where: { id },
@@ -604,7 +726,13 @@ export class ServicesService {
 
     try {
       const { skip, take } = calculatePrismaParams(page, pageSize);
-      const where = { sellerId, service: { isActive: true } };
+      const where = {
+        sellerId,
+        service: {
+          isActive: true,
+          sellerId: { notIn: await hiddenProviderIds(this.prisma) },
+        },
+      };
 
       const [likes, count] = await Promise.all([
         this.prisma.serviceLike.findMany({
