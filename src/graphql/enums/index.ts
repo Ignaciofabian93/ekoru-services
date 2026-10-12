@@ -17,6 +17,14 @@ export enum QuotationStatus {
   EXPIRED = 'EXPIRED',
 }
 
+/**
+ * How a booking is paid (SRV-5, decision D7). Beta: the client pays the
+ * provider directly, at the place of service; nothing is charged through EKORU.
+ */
+export enum BookingPaymentMode {
+  ON_SITE = 'ON_SITE',
+}
+
 export enum SortOrder {
   ASC = 'ASC',
   DESC = 'DESC',
@@ -42,6 +50,12 @@ registerEnumType(ServicePricing, {
 registerEnumType(QuotationStatus, {
   name: 'QuotationStatus',
   description: 'Quotation status types',
+});
+
+registerEnumType(BookingPaymentMode, {
+  name: 'BookingPaymentMode',
+  description:
+    'How a booking is paid. ON_SITE: directly to the provider, at the place of service.',
 });
 
 registerEnumType(SortOrder, {

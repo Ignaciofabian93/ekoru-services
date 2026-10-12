@@ -71,6 +71,13 @@ export class BookingsService {
               ? booking.providerId
               : booking.clientId,
           scheduledFor: booking.scheduledDate?.toISOString() ?? null,
+          // Paid to the provider at the place of service (SRV-5, D7); the
+          // copy says so. The price is for templates that want to show it.
+          paymentMode: 'ON_SITE',
+          price:
+            booking.agreedPrice != null && booking.agreedPrice > 0
+              ? formatClp(booking.agreedPrice)
+              : null,
           ...extra,
           serviceName,
         },
@@ -439,4 +446,14 @@ interface BookingForNotify {
   clientId: string;
   providerId: string;
   scheduledDate?: Date | null;
+  agreedPrice?: number | null;
+}
+
+/** "$15.000": how prices read in Chile, whatever the recipient's language. */
+function formatClp(value: number): string {
+  return new Intl.NumberFormat('es-CL', {
+    style: 'currency',
+    currency: 'CLP',
+    maximumFractionDigits: 0,
+  }).format(value);
 }

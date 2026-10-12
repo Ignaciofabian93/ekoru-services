@@ -37,11 +37,6 @@ export class UpdateServiceBookingInput {
 
   @Field(() => String, { nullable: true })
   @IsOptional()
-  @IsString()
-  paymentStatus?: string; // PENDING, PARTIAL, PAID
-
-  @Field(() => String, { nullable: true })
-  @IsOptional()
   @IsIn([
     'PENDING',
     'CONFIRMED',

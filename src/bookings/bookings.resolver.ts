@@ -1,4 +1,15 @@
-import { Resolver, Query, Mutation, Args, Int, ID } from '@nestjs/graphql';
+import {
+  Resolver,
+  Query,
+  Mutation,
+  Args,
+  Int,
+  ID,
+  Parent,
+  ResolveField,
+} from '@nestjs/graphql';
+import { BookingPaymentMode } from '../graphql/enums/index.js';
+import { Seller } from '../services/entities/index.js';
 import { BookingsService } from './bookings.service.js';
 import { ServiceBooking, ServiceBookingConnection } from './entities/index.js';
 import {
@@ -20,6 +31,31 @@ import {
 @Resolver(() => ServiceBooking)
 export class BookingsResolver {
   constructor(private readonly bookingsService: BookingsService) {}
+
+  /**
+   * How the client pays (SRV-5, decision D7): always on site for the beta,
+   * directly to the provider. Nothing is charged through EKORU, so there is
+   * no payment state to track on the booking.
+   */
+  @ResolveField(() => BookingPaymentMode, { name: 'paymentMode' })
+  paymentMode(): BookingPaymentMode {
+    return BookingPaymentMode.ON_SITE;
+  }
+
+  /**
+   * Federation references to users for both parties. Booking rows carry only
+   * the ids, so without these the fields always came back null (the panel's
+   * bookings screen showed "—" for both). Quotations map them in the service.
+   */
+  @ResolveField(() => Seller, { name: 'client', nullable: true })
+  client(@Parent() booking: ServiceBooking): Pick<Seller, 'id'> | null {
+    return booking.clientId ? { id: booking.clientId } : null;
+  }
+
+  @ResolveField(() => Seller, { name: 'provider', nullable: true })
+  provider(@Parent() booking: ServiceBooking): Pick<Seller, 'id'> | null {
+    return booking.providerId ? { id: booking.providerId } : null;
+  }
 
   /** The booking's client or provider, or a platform admin with MANAGE_ORDERS. */
   @Query(() => ServiceBooking, { name: 'getServiceBooking', nullable: true })

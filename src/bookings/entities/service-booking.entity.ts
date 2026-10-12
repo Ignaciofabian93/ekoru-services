@@ -33,8 +33,8 @@ export class ServiceBooking {
   @Field(() => Float)
   agreedPrice: number;
 
-  @Field(() => String)
-  paymentStatus: string; // PENDING, PARTIAL, PAID
+  // `paymentMode` is resolved in BookingsResolver (SRV-5). The old free-text
+  // `paymentStatus` column is never written, so it is no longer exposed.
 
   @Field(() => String)
   status: string; // PENDING, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED

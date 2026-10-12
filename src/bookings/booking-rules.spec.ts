@@ -125,12 +125,6 @@ describe('booking rules', () => {
           cancellationReason: 'x',
         }),
       ).toThrow(BadRequestError);
-      expect(() =>
-        bookingUpdateData('provider', pending, {
-          id: '1',
-          paymentStatus: 'PAID',
-        }),
-      ).toThrow(ForbiddenError);
     });
 
     it('refuses any change to a closed booking', () => {

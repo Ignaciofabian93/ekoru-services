@@ -597,14 +597,7 @@ describe('BookingsService', () => {
       expect(mockPrismaService.serviceBooking.update).not.toHaveBeenCalled();
     });
 
-    it('refuses writing the payment status or cancelling through an update', async () => {
-      await expect(
-        service.updateServiceBooking({
-          input: { id: '1', paymentStatus: 'PAID' },
-          role: 'provider',
-          current: { status: 'CONFIRMED' },
-        }),
-      ).rejects.toBeInstanceOf(ForbiddenError);
+    it('refuses cancelling through an update', async () => {
       await expect(
         service.updateServiceBooking({
           input: { id: '1', status: 'CANCELLED', cancelledBy: 'PROVIDER' },
@@ -764,6 +757,10 @@ describe('BookingsService', () => {
       );
       // The actor is the other party, so the copy reads "X booked …".
       expect(calls[0].data.actorSellerId).toBe('client-123');
+      // Paid on site (SRV-5): the notice says so and carries the price.
+      expect(calls[0].data.paymentMode).toBe('ON_SITE');
+      // The stored price ($100 in the mock row), never the one the client sent.
+      expect(calls[0].data.price).toBe('$100');
     });
 
     it('tells the client when the booking is confirmed', async () => {

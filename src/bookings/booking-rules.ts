@@ -7,8 +7,8 @@ import type { UpdateServiceBookingInput } from './dto/index.js';
  *
  * The client asks for a date, a place and leaves notes. The provider confirms,
  * prices, starts, completes or marks a no-show. Cancelling has its own mutation
- * so the session, not the payload, records who cancelled. Payment status is not
- * writable here: it belongs to the payment flow (decision D7).
+ * so the session, not the payload, records who cancelled. There is no payment
+ * state: bookings are paid to the provider on site (decision D7, SRV-5).
  *
  * Kept free of Nest and Prisma calls so every rule is unit-tested directly.
  */
@@ -68,12 +68,6 @@ export function bookingUpdateData(
   ) {
     throw new BadRequestError('Usa cancelServiceBooking para cancelar');
   }
-  if (input.paymentStatus != null) {
-    throw new ForbiddenError(
-      'El estado del pago no se modifica desde la reserva',
-    );
-  }
-
   const providerOnly: (keyof UpdateServiceBookingInput)[] = [
     'status',
     'agreedPrice',
