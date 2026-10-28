@@ -22,5 +22,11 @@
     "package": "multer",
     "reason": "Denial of service while an asynchronous fileFilter is pending at request teardown. Our only fileFilters (gateway image uploads) are synchronous. Fixed in 2.5.0, released 2026-10-22; @nestjs/platform-express 11 still pins 2.4.0. After 2026-11-05, override multer to 2.5.0 and remove this entry (INF-22).",
     "until": "2026-11-07"
+  },
+  {
+    "id": "GHSA-x8rm-f576-gq67",
+    "package": "graphql-scalars",
+    "reason": "ReDoS in the PhoneNumber scalar's regular expression. We import only GraphQLJSON and register no PhoneNumber scalar, so that regex never runs. Fixed in 2.0.1, a major version released 2026-10-15. Upgrade to 2.0.1, or replace GraphQLJSON with our own JSON scalar as ekoru-users does, then remove this entry (INF-22).",
+    "until": "2026-11-30"
   }
 ]
