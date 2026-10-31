@@ -31,6 +31,8 @@ const serviceSelect = {
   basePrice: true,
   priceRange: true,
   duration: true,
+  // Kept current by ReviewsService.recomputeAverageRating on every review.
+  averageRating: true,
   isActive: true,
   images: true,
   tags: true,
@@ -155,7 +157,6 @@ export class ServicesService {
         ...service,
         seller: { id: service.sellerId },
         reviewCount: service._count.serviceReview,
-        averageRating: 0,
       }));
 
       return createPaginatedResponse(mappedServices, count, page, pageSize);
@@ -206,7 +207,6 @@ export class ServicesService {
         ...service,
         seller: { id: service.sellerId },
         reviewCount: service._count.serviceReview,
-        averageRating: 0,
       }));
 
       return createPaginatedResponse(mappedServices, count, page, pageSize);
@@ -259,7 +259,6 @@ export class ServicesService {
         ...service,
         seller: { id: service.sellerId },
         reviewCount: service._count.serviceReview,
-        averageRating: 0,
       }));
 
       return createPaginatedResponse(mappedServices, count, page, pageSize);
@@ -336,7 +335,6 @@ export class ServicesService {
         ...service,
         seller: { id: service.sellerId },
         reviewCount: service._count.serviceReview,
-        averageRating: 0,
       }));
 
       return createPaginatedResponse(mappedServices, count, page, pageSize);
@@ -389,7 +387,6 @@ export class ServicesService {
         ...service,
         seller: { id: service.sellerId },
         reviewCount: service._count.serviceReview,
-        averageRating: 0,
       }));
 
       return createPaginatedResponse(mappedServices, count, page, pageSize);
@@ -509,7 +506,6 @@ export class ServicesService {
       return {
         ...service,
         seller: { id: service.sellerId },
-        averageRating: 0,
         reviewCount: 0,
       };
     } catch (error) {
@@ -578,7 +574,6 @@ export class ServicesService {
       return {
         ...service,
         seller: { id: service.sellerId },
-        averageRating: 0,
         reviewCount: service._count.serviceReview,
       };
     } catch (error) {
@@ -608,7 +603,6 @@ export class ServicesService {
       return {
         ...service,
         seller: { id: service.sellerId },
-        averageRating: 0,
         reviewCount: 0,
       };
     } catch (error) {
@@ -653,7 +647,6 @@ export class ServicesService {
       return {
         ...service,
         seller: { id: service.sellerId },
-        averageRating: 0,
         reviewCount: service._count.serviceReview,
       };
     } catch (error) {

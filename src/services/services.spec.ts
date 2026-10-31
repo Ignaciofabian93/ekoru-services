@@ -52,6 +52,8 @@ describe('ServicesService', () => {
     basePrice: 100,
     priceRange: null,
     duration: 60,
+    // The stored average, kept current by the reviews service.
+    averageRating: 4.2,
     isActive: true,
     images: ['image1.jpg', 'image2.jpg'],
     tags: ['tag1', 'tag2'],
@@ -295,6 +297,24 @@ describe('ServicesService', () => {
         select: expect.any(Object),
       });
       expect(result.nodes).toHaveLength(1);
+    });
+
+    it('returns the stored average rating, not a placeholder 0', async () => {
+      mockPrismaService.service.count.mockResolvedValue(1);
+      mockPrismaService.service.findMany.mockResolvedValue(mockServices);
+
+      const result = await service.getServicesBySeller({
+        sellerId: 'seller-123',
+        page: 1,
+        pageSize: 10,
+      });
+
+      const { select } = mockPrismaService.service.findMany.mock.calls[0][0];
+      expect(select.averageRating).toBe(true);
+      expect(result.nodes[0]).toMatchObject({
+        averageRating: 4.2,
+        reviewCount: 2,
+      });
     });
 
     it('should return active services for a seller', async () => {
@@ -565,7 +585,6 @@ describe('ServicesService', () => {
       expect(result).toEqual({
         ...createdService,
         seller: { id: 'seller-123' },
-        averageRating: 0,
         reviewCount: 0,
       });
     });
@@ -825,7 +844,6 @@ describe('ServicesService', () => {
       expect(result).toEqual({
         ...updatedService,
         seller: { id: 'seller-123' },
-        averageRating: 0,
         reviewCount: 3,
       });
     });
@@ -936,7 +954,6 @@ describe('ServicesService', () => {
       expect(result).toEqual({
         ...mockService,
         seller: { id: 'seller-123' },
-        averageRating: 0,
         reviewCount: 0,
       });
     });
