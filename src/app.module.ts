@@ -15,6 +15,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { CatalogV2Module as ServiceCatalogModule } from './catalog-v2/catalog-v2.module.js';
 import { AdminCatalogModule } from './adminCatalog/index.js';
 import { AdminServicesModule } from './adminServices/index.js';
+import { BusinessServicesModule } from './businessServices/index.js';
 import { ServiceCategoriesModule } from './serviceCategories/index.js';
 import { ServiceSubCategoriesModule } from './serviceSubCategories/index.js';
 import { ServicesModule } from './services/services.module.js';
@@ -85,6 +86,9 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
     // Platform-admin catalog CRUD (raw reads + bulk upsert/XLSX)
     AdminCatalogModule,
     AdminServicesModule,
+
+    // A business publishing its own services from the panel (ADM-16)
+    BusinessServicesModule,
 
     // Service categories subdomain
     ServiceCategoriesModule,

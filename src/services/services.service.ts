@@ -407,7 +407,7 @@ export class ServicesService {
    * to ekoru-users, so they are read with raw SQL. A ban or deactivation sets
    * `Seller.isActive` false, which covers tokens issued before it.
    */
-  private async assertCanPublish(sellerId: string | undefined) {
+  async assertCanPublish(sellerId: string | undefined) {
     if (!sellerId) {
       throw new UnauthorizedError('Debes iniciar sesión para publicar');
     }

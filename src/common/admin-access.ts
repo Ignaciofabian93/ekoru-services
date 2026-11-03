@@ -129,3 +129,34 @@ export async function adminSellerScope(
   }
   throw forbidden(accepted);
 }
+
+/** The business permissions this subgraph checks. The owner holds them all. */
+export type BusinessPermissionName = 'MANAGE_BUSINESS_PRODUCTS';
+
+/**
+ * A business account acting on its own services (ADM-16): an active BUSINESS
+ * admin who is the owner or holds `permission`. Returns its seller id, the
+ * only provider the caller may write for, whatever a request names. Platform
+ * admins have their own screens and are refused here. A business without a
+ * panel plan has no session to call with (the gateway, USR-15).
+ */
+export async function businessAdminSellerId(
+  prisma: PrismaService,
+  adminId: string | undefined,
+  permission: BusinessPermissionName,
+): Promise<string> {
+  if (!adminId) throw new UnauthorizedError('Admin authentication required');
+  const admin = await loadAdmin(prisma, adminId);
+  if (
+    admin?.isActive &&
+    admin.adminType === 'BUSINESS' &&
+    admin.sellerId &&
+    (admin.role === 'BUSINESS_OWNER' ||
+      (admin.permissions ?? []).includes(permission))
+  ) {
+    return admin.sellerId;
+  }
+  throw new ForbiddenError(
+    `This action requires a business account with the ${permission} permission`,
+  );
+}
