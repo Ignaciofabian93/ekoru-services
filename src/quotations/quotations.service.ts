@@ -6,7 +6,11 @@ import {
   BadRequestError,
   InternalServerError,
 } from '../common/exceptions/index.js';
-import { assertAdminCan, isAdminWith } from '../common/admin-access.js';
+import {
+  assertAdminCan,
+  businessAdminStore,
+  isAdminWith,
+} from '../common/admin-access.js';
 import { hiddenProviderIds } from '../common/seller-visibility.js';
 import { quotationUpdateData, quotedPrice } from './quotation-rules.js';
 import {
@@ -35,6 +39,11 @@ export class QuotationsService {
 
   isOrdersAdmin(adminId: string | undefined): Promise<boolean> {
     return isAdminWith(this.prisma, adminId, 'MANAGE_ORDERS');
+  }
+
+  /** The store a business admin answers quotes for in the panel (USR-15). */
+  businessProvider(adminId: string | undefined): Promise<string | null> {
+    return businessAdminStore(this.prisma, adminId, 'MANAGE_BUSINESS_ORDERS');
   }
 
   /**

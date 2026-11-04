@@ -13,6 +13,9 @@ export const MAX_ROWS_PER_CALL = 200;
 /** Where EKORU's photos live; next/image on the web renders nothing else. */
 const IMAGE_HOSTS = ['images.ekoru.cl', 'staging-images.ekoru.cl'];
 
+/** Photos per service, as on the web and the panel's Catálogo y fotos. */
+export const MAX_IMAGES = 3;
+
 const REQUIRED_ON_CREATE = ['name', 'subcategoryId', 'pricingType'] as const;
 
 type Messages = {
@@ -22,6 +25,7 @@ type Messages = {
   subcategory: string;
   price: string;
   imageHost: string;
+  tooManyImages: string;
 };
 
 const MESSAGES: Partial<Record<Language, Messages>> = {
@@ -33,7 +37,8 @@ const MESSAGES: Partial<Record<Language, Messages>> = {
     price:
       'Indica un precio mayor que 0, salvo en los servicios por cotización',
     imageHost:
-      'Las fotos deben estar subidas a EKORU ({{hosts}}). Deja la columna vacía y agrégalas después en la web',
+      'Las fotos deben estar subidas a EKORU ({{hosts}}). Deja la columna vacía y agrégalas después en Catálogo y fotos',
+    tooManyImages: 'Cada servicio lleva como máximo {{max}} fotos',
   },
   [Language.EN]: {
     tooManyRows: 'Upload at most {{max}} services at a time',
@@ -42,7 +47,8 @@ const MESSAGES: Partial<Record<Language, Messages>> = {
     subcategory: 'Subcategory {{id}} does not exist',
     price: 'Set a price above 0, except for quoted services',
     imageHost:
-      'Photos must be uploaded to EKORU ({{hosts}}). Leave the column empty and add them later on the web',
+      'Photos must be uploaded to EKORU ({{hosts}}). Leave the column empty and add them later in Catalog and photos',
+    tooManyImages: 'Each service takes at most {{max}} photos',
   },
   [Language.FR]: {
     tooManyRows: 'Importez au maximum {{max}} services à la fois',
@@ -51,7 +57,8 @@ const MESSAGES: Partial<Record<Language, Messages>> = {
     subcategory: "La sous-catégorie {{id}} n'existe pas",
     price: 'Indiquez un prix supérieur à 0, sauf pour les services sur devis',
     imageHost:
-      'Les photos doivent être hébergées sur EKORU ({{hosts}}). Laissez la colonne vide et ajoutez-les ensuite sur le web',
+      'Les photos doivent être hébergées sur EKORU ({{hosts}}). Laissez la colonne vide et ajoutez-les ensuite dans Catalogue et photos',
+    tooManyImages: 'Chaque service accepte au maximum {{max}} photos',
   },
 };
 
@@ -262,6 +269,11 @@ export class BusinessServicesService {
     sellerId: string,
     language?: Language,
   ) {
+    if (images.length > MAX_IMAGES) {
+      throw new BadRequestError(
+        message(language, 'tooManyImages', { max: String(MAX_IMAGES) }),
+      );
+    }
     const ours = (image: string) => {
       if (image.startsWith(`product/${sellerId}/`)) return true;
       try {

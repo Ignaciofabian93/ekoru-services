@@ -164,13 +164,16 @@ export class BookingsResolver {
     });
   }
 
+  /** The provider's bookings, on the web or for its panel team (USR-15). */
   @Query(() => ServiceBookingConnection, { name: 'myProviderBookings' })
   async myProviderBookings(
-    @CurrentSeller() providerId: string,
+    @CurrentSeller() sellerId: string,
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
     @Args('status', { type: () => String, nullable: true }) status?: string,
+    @CurrentAdmin() adminId?: string,
   ) {
+    const { id: providerId } = await this.actor(sellerId, adminId);
     this.assertSignedIn(providerId);
     return this.bookingsService.getServiceBookingsByProvider({
       providerId,
@@ -198,11 +201,13 @@ export class BookingsResolver {
   async updateServiceBooking(
     @Args('input') input: UpdateServiceBookingInput,
     @CurrentSeller() sellerId: string,
+    @CurrentAdmin() adminId?: string,
   ) {
-    const booking = await this.assertParticipant(input.id, sellerId);
+    const actor = await this.actor(sellerId, adminId);
+    const booking = await this.assertParticipant(input.id, actor);
     return this.bookingsService.updateServiceBooking({
       input,
-      role: bookingRole(booking, sellerId)!,
+      role: bookingRole(booking, actor.id)!,
       current: booking,
     });
   }
@@ -218,7 +223,8 @@ export class BookingsResolver {
     @CurrentSeller() sellerId: string,
     @CurrentAdmin() adminId?: string,
   ) {
-    if (!sellerId && adminId) {
+    const actor = await this.actor(sellerId, adminId);
+    if (!actor.id && adminId) {
       await this.bookingsService.assertOrdersAdmin(adminId);
       const booking = await this.bookingsService.getServiceBooking(
         parseInt(id, 10),
@@ -230,12 +236,12 @@ export class BookingsResolver {
         reason,
       });
     }
-    const booking = await this.assertParticipant(id, sellerId);
+    const booking = await this.assertParticipant(id, actor);
     assertBookingOpen(booking.status);
     return this.bookingsService.cancelServiceBooking({
       id: parseInt(id, 10),
       // Who cancelled is a fact about the session, not a claim the caller makes.
-      cancelledBy: sellerId,
+      cancelledBy: actor.id,
       reason,
     });
   }
@@ -244,11 +250,13 @@ export class BookingsResolver {
   async completeServiceBooking(
     @Args('id', { type: () => ID }) id: string,
     @CurrentSeller() sellerId: string,
+    @CurrentAdmin() adminId?: string,
   ) {
-    const booking = await this.assertParticipant(id, sellerId);
+    const actor = await this.actor(sellerId, adminId);
+    const booking = await this.assertParticipant(id, actor);
     // Only the provider marks work done; a client confirming their own booking
     // complete would let them close it before the provider agrees.
-    if (booking.providerId !== sellerId) {
+    if (booking.providerId !== actor.id) {
       throw new ForbiddenError('Solo el proveedor puede completar la reserva');
     }
     assertBookingCompletable(booking.status);
@@ -263,16 +271,35 @@ export class BookingsResolver {
     }
   }
 
+  /**
+   * Who the caller acts as. A signed-in seller is themselves. A business
+   * admin who handles orders acts as their store in the panel (USR-15), on
+   * the bookings it provides only. Anyone else acts as nobody (`id` empty).
+   */
+  private async actor(
+    sellerId: string | undefined,
+    adminId: string | undefined,
+  ): Promise<{ id: string; providerOnly: boolean }> {
+    if (sellerId) return { id: sellerId, providerOnly: false };
+    const store = await this.bookingsService.businessProvider(adminId);
+    return { id: store ?? '', providerOnly: !!store };
+  }
+
   /** Loads the booking and confirms the caller is its client or its provider. */
-  private async assertParticipant(id: string, sellerId: string) {
-    this.assertSignedIn(sellerId);
+  private async assertParticipant(
+    id: string,
+    actor: { id: string; providerOnly: boolean },
+  ) {
+    this.assertSignedIn(actor.id);
     const booking = await this.bookingsService.getServiceBooking(
       parseInt(id, 10),
     );
     if (!booking) {
       throw new NotFoundError('Reserva no encontrada');
     }
-    if (booking.clientId !== sellerId && booking.providerId !== sellerId) {
+    const isProvider = booking.providerId === actor.id;
+    const isClient = !actor.providerOnly && booking.clientId === actor.id;
+    if (!isProvider && !isClient) {
       throw new ForbiddenError('No tienes acceso a esta reserva');
     }
     return booking;

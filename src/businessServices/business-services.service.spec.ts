@@ -73,6 +73,10 @@ describe('BusinessServicesService (ADM-16)', () => {
         { ...newRow, basePrice: 0 },
         { ...newRow, subcategoryId: 99 },
         { ...newRow, name: '' },
+        {
+          ...newRow,
+          images: ['a', 'b', 'c', 'd'].map((k) => `product/shop-1/${k}.webp`),
+        },
       ],
     });
 
@@ -84,6 +88,7 @@ describe('BusinessServicesService (ADM-16)', () => {
       ],
       [2, 'La subcategoría 99 no existe'],
       [3, 'Faltan datos obligatorios: name'],
+      [4, 'Cada servicio lleva como máximo 3 fotos'],
     ]);
   });
 

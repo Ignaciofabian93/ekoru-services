@@ -131,7 +131,31 @@ export async function adminSellerScope(
 }
 
 /** The business permissions this subgraph checks. The owner holds them all. */
-export type BusinessPermissionName = 'MANAGE_BUSINESS_PRODUCTS';
+export type BusinessPermissionName =
+  | 'MANAGE_BUSINESS_PRODUCTS'
+  | 'MANAGE_BUSINESS_ORDERS';
+
+/**
+ * The store an active BUSINESS admin works for, when they are its owner or
+ * hold `permission`; null for anyone else, platform admins included.
+ */
+export async function businessAdminStore(
+  prisma: PrismaService,
+  adminId: string | undefined,
+  permission: BusinessPermissionName,
+): Promise<string | null> {
+  if (!adminId) return null;
+  const admin = await loadAdmin(prisma, adminId);
+  const holds =
+    admin?.role === 'BUSINESS_OWNER' ||
+    (admin?.permissions ?? []).includes(permission);
+  return admin?.isActive &&
+    admin.adminType === 'BUSINESS' &&
+    admin.sellerId &&
+    holds
+    ? admin.sellerId
+    : null;
+}
 
 /**
  * A business account acting on its own services (ADM-16): an active BUSINESS
@@ -146,16 +170,8 @@ export async function businessAdminSellerId(
   permission: BusinessPermissionName,
 ): Promise<string> {
   if (!adminId) throw new UnauthorizedError('Admin authentication required');
-  const admin = await loadAdmin(prisma, adminId);
-  if (
-    admin?.isActive &&
-    admin.adminType === 'BUSINESS' &&
-    admin.sellerId &&
-    (admin.role === 'BUSINESS_OWNER' ||
-      (admin.permissions ?? []).includes(permission))
-  ) {
-    return admin.sellerId;
-  }
+  const store = await businessAdminStore(prisma, adminId, permission);
+  if (store) return store;
   throw new ForbiddenError(
     `This action requires a business account with the ${permission} permission`,
   );

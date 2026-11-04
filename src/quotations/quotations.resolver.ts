@@ -136,12 +136,15 @@ export class QuotationsResolver {
     });
   }
 
+  /** The provider's quote requests, on the web or for its panel team (USR-15). */
   @Query(() => QuotationConnection, { name: 'myProviderQuotations' })
   async myProviderQuotations(
-    @CurrentSeller() providerId: string,
+    @CurrentSeller() sellerId: string,
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('pageSize', { type: () => Int, defaultValue: 10 }) pageSize: number,
+    @CurrentAdmin() adminId?: string,
   ) {
+    const { id: providerId } = await this.actor(sellerId, adminId);
     this.assertSignedIn(providerId);
     return this.quotationsService.getQuotationsByProvider({
       providerId,
@@ -168,9 +171,11 @@ export class QuotationsResolver {
   async updateQuotation(
     @Args('input') input: UpdateQuotationInput,
     @CurrentSeller() sellerId: string,
+    @CurrentAdmin() adminId?: string,
   ) {
-    const quotation = await this.loadForParticipant(input.id, sellerId);
-    if (quotation.providerId !== sellerId) {
+    const actor = await this.actor(sellerId, adminId);
+    const quotation = await this.loadForParticipant(input.id, actor);
+    if (quotation.providerId !== actor.id) {
       throw new ForbiddenError(
         'Solo el proveedor puede responder la cotización',
       );
@@ -209,9 +214,11 @@ export class QuotationsResolver {
   async completeQuotation(
     @Args('id', { type: () => ID }) id: string,
     @CurrentSeller() sellerId: string,
+    @CurrentAdmin() adminId?: string,
   ) {
-    const quotation = await this.loadForParticipant(id, sellerId);
-    if (quotation.providerId !== sellerId) {
+    const actor = await this.actor(sellerId, adminId);
+    const quotation = await this.loadForParticipant(id, actor);
+    if (quotation.providerId !== actor.id) {
       throw new ForbiddenError(
         'Solo el proveedor puede completar la cotización',
       );
@@ -228,8 +235,9 @@ export class QuotationsResolver {
     @CurrentAdmin() adminId?: string,
   ) {
     // An operator with MANAGE_ORDERS may cancel when the parties disagree
-    // (ADM-5); both are told.
-    if (!sellerId && adminId) {
+    // (ADM-5); both are told. A store's panel team cancels as the store.
+    const actor = await this.actor(sellerId, adminId);
+    if (!actor.id && adminId) {
       await this.quotationsService.assertOrdersAdmin(adminId);
       const quotation = await this.quotationsService.getQuotation(
         parseInt(id, 10),
@@ -241,12 +249,12 @@ export class QuotationsResolver {
         cancelledBy: 'ADMIN',
       });
     }
-    const quotation = await this.loadForParticipant(id, sellerId);
+    const quotation = await this.loadForParticipant(id, actor);
     assertQuotationCancellable(quotation);
     return this.quotationsService.cancelQuotation({
       id: parseInt(id, 10),
       reason,
-      cancelledBy: sellerId,
+      cancelledBy: actor.id,
     });
   }
 
@@ -306,16 +314,35 @@ export class QuotationsResolver {
     }
   }
 
+  /**
+   * Who the caller acts as. A signed-in seller is themselves. A business
+   * admin who handles orders acts as their store in the panel (USR-15), on
+   * the quotes it provides only. Anyone else acts as nobody (`id` empty).
+   */
+  private async actor(
+    sellerId: string | undefined,
+    adminId: string | undefined,
+  ): Promise<{ id: string; providerOnly: boolean }> {
+    if (sellerId) return { id: sellerId, providerOnly: false };
+    const store = await this.quotationsService.businessProvider(adminId);
+    return { id: store ?? '', providerOnly: !!store };
+  }
+
   /** Loads the quotation and confirms the caller is its client or its provider. */
-  private async loadForParticipant(id: string, sellerId: string) {
-    this.assertSignedIn(sellerId);
+  private async loadForParticipant(
+    id: string,
+    actor: { id: string; providerOnly: boolean },
+  ) {
+    this.assertSignedIn(actor.id);
     const quotation = await this.quotationsService.getQuotation(
       parseInt(id, 10),
     );
     if (!quotation) {
       throw new NotFoundError('Cotización no encontrada');
     }
-    if (quotation.clientId !== sellerId && quotation.providerId !== sellerId) {
+    const isProvider = quotation.providerId === actor.id;
+    const isClient = !actor.providerOnly && quotation.clientId === actor.id;
+    if (!isProvider && !isClient) {
       throw new ForbiddenError('No tienes acceso a esta cotización');
     }
     return quotation;
@@ -323,7 +350,10 @@ export class QuotationsResolver {
 
   /** Accepting, declining and deleting are the client's calls alone. */
   private async assertClient(id: string, sellerId: string) {
-    const quotation = await this.loadForParticipant(id, sellerId);
+    const quotation = await this.loadForParticipant(id, {
+      id: sellerId,
+      providerOnly: false,
+    });
     if (quotation.clientId !== sellerId) {
       throw new ForbiddenError(
         'Solo el cliente puede responder esta cotización',

@@ -4,7 +4,11 @@ import { BookingStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { UsersClient, type NotificationType } from '../common/clients/index.js';
 import { awardServicePoints } from '../common/service-points.js';
-import { assertAdminCan, isAdminWith } from '../common/admin-access.js';
+import {
+  assertAdminCan,
+  businessAdminStore,
+  isAdminWith,
+} from '../common/admin-access.js';
 import { hiddenProviderIds } from '../common/seller-visibility.js';
 import {
   NotFoundError,
@@ -38,6 +42,11 @@ export class BookingsService {
 
   isOrdersAdmin(adminId: string | undefined): Promise<boolean> {
     return isAdminWith(this.prisma, adminId, 'MANAGE_ORDERS');
+  }
+
+  /** The store a business admin handles bookings for in the panel (USR-15). */
+  businessProvider(adminId: string | undefined): Promise<string | null> {
+    return businessAdminStore(this.prisma, adminId, 'MANAGE_BUSINESS_ORDERS');
   }
 
   /**
