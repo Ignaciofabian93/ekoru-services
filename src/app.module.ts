@@ -10,7 +10,7 @@ import {
   ApolloFederationDriverConfig,
 } from '@nestjs/apollo';
 import { ModuleRef } from '@nestjs/core';
-import { GraphQLJSON } from 'graphql-scalars';
+import { GraphQLJSON } from './graphql/scalars/index.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { CatalogV2Module as ServiceCatalogModule } from './catalog-v2/catalog-v2.module.js';
 import { AdminCatalogModule } from './adminCatalog/index.js';

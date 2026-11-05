@@ -10,7 +10,7 @@ import {
   IsEnum,
   IsJSON,
 } from 'class-validator';
-import { GraphQLJSON } from 'graphql-scalars';
+import { GraphQLJSON } from '../../graphql/scalars/index.js';
 import { QuotationStatus } from '../../graphql/enums/index.js';
 
 @InputType()

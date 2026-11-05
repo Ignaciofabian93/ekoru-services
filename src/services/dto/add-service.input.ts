@@ -10,7 +10,7 @@ import {
   IsObject,
 } from 'class-validator';
 import { ServicePricing } from '../../graphql/enums/index.js';
-import { GraphQLJSON } from 'graphql-scalars';
+import { GraphQLJSON } from '../../graphql/scalars/index.js';
 
 @InputType()
 export class AddServiceInput {

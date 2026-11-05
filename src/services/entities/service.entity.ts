@@ -1,5 +1,5 @@
 import { ObjectType, Field, ID, Int, Float, Directive } from '@nestjs/graphql';
-import { GraphQLJSON } from 'graphql-scalars';
+import { GraphQLJSON } from '../../graphql/scalars/index.js';
 import { ServicePricing } from '../../graphql/enums/index.js';
 import { ServiceSubCategory } from '../../serviceSubCategories/entities/index.js';
 import { Seller } from './seller.entity.js';

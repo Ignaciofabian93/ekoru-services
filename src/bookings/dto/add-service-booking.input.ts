@@ -7,7 +7,7 @@ import {
   IsDate,
   IsObject,
 } from 'class-validator';
-import { GraphQLJSON } from 'graphql-scalars';
+import { GraphQLJSON } from '../../graphql/scalars/index.js';
 
 /**
  * What a client sends to book a service.

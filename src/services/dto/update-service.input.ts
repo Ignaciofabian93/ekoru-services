@@ -9,7 +9,7 @@ import {
   IsEnum,
   IsObject,
 } from 'class-validator';
-import { GraphQLJSON } from 'graphql-scalars';
+import { GraphQLJSON } from '../../graphql/scalars/index.js';
 import { ServicePricing } from '../../graphql/enums/index.js';
 
 @InputType()
