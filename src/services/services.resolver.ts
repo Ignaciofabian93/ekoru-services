@@ -16,6 +16,7 @@ import {
   ServiceConnection,
   ServiceFaq,
   ServicePackage,
+  ServiceProvider,
 } from './entities/index.js';
 import { ServiceSubCategory } from '../serviceSubCategories/entities/index.js';
 import { AddServiceInput, UpdateServiceInput } from './dto/index.js';
@@ -47,6 +48,26 @@ export class ServicesResolver {
       isActive,
       excludeSellerId: ctx.sellerId,
     });
+  }
+
+  @Query(() => [ServiceProvider], {
+    name: 'getServiceProviders',
+    description:
+      'Providers with active services, most services first, for the providers ' +
+      'row on /services. With categoryId, only those offering services in ' +
+      'that service category. Public.',
+  })
+  async getServiceProviders(
+    @Args('categoryId', { type: () => ID, nullable: true }) categoryId?: string,
+    @Args('limit', { type: () => Int, defaultValue: 24 }) limit: number = 24,
+  ): Promise<ServiceProvider[]> {
+    const id = categoryId ? Number(categoryId) : undefined;
+    if (id !== undefined && !Number.isInteger(id)) return [];
+    const rows = await this.servicesService.getServiceProviders({
+      categoryId: id,
+      limit,
+    });
+    return rows.map((row) => ({ ...row, seller: { id: row.sellerId } }));
   }
 
   @Query(() => ServiceConnection, { name: 'getServicesBySeller' })

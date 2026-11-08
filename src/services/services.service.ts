@@ -273,6 +273,58 @@ export class ServicesService {
     }
   }
 
+  /** Most providers the providers row asks for at once. */
+  static readonly MAX_SERVICE_PROVIDERS = 50;
+
+  /**
+   * Providers with active services the public can see, most services first,
+   * for the providers row on /services. With `categoryId`, only services in
+   * that category's active subcategories count, the same rule as
+   * getServicesByCategory, so the row and the list agree. Hidden providers
+   * never appear.
+   */
+  async getServiceProviders({
+    categoryId,
+    limit,
+  }: {
+    categoryId?: number;
+    limit: number;
+  }): Promise<{ sellerId: string; serviceCount: number }[]> {
+    const take = Math.min(
+      Math.max(Math.trunc(limit) || 1, 1),
+      ServicesService.MAX_SERVICE_PROVIDERS,
+    );
+
+    let subcategoryFilter: { subcategoryId?: { in: number[] } } = {};
+    if (categoryId !== undefined) {
+      const subCategories = await this.prisma.serviceSubCategory.findMany({
+        where: { serviceCategoryId: categoryId, isActive: true },
+        select: { id: true },
+      });
+      if (subCategories.length === 0) return [];
+      subcategoryFilter = {
+        subcategoryId: { in: subCategories.map((sub) => sub.id) },
+      };
+    }
+
+    const groups = await this.prisma.service.groupBy({
+      by: ['sellerId'],
+      where: {
+        isActive: true,
+        ...subcategoryFilter,
+        ...(await this.sellerFilter()),
+      },
+      _count: { sellerId: true },
+      orderBy: [{ _count: { sellerId: 'desc' } }, { sellerId: 'asc' }],
+      take,
+    });
+
+    return groups.map((g) => ({
+      sellerId: g.sellerId,
+      serviceCount: g._count.sellerId,
+    }));
+  }
+
   /**
    * Get services by Service Category ID.
    * Returns all services from all sub categories under this category.

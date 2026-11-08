@@ -22,7 +22,9 @@ describe('ServicesService', () => {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      groupBy: jest.fn(),
     },
+    serviceSubCategory: { findMany: jest.fn() },
     // Seller/BusinessProfile (publisher check) and Admin (SEC-8) are read
     // with raw SQL, since ekoru-users owns them.
     $queryRaw: jest.fn(),
@@ -482,6 +484,70 @@ describe('ServicesService', () => {
           'Error al obtener los servicios por tipo de precio',
         ),
       );
+    });
+  });
+
+  describe('providers row (getServiceProviders)', () => {
+    beforeEach(() => {
+      mockPrismaService.service.groupBy.mockResolvedValue([]);
+      mockPrismaService.serviceSubCategory.findMany.mockResolvedValue([]);
+    });
+
+    it('counts active services per provider, most first, without hidden providers', async () => {
+      hiddenProviders = [{ sellerId: 'banned-1' }];
+      mockPrismaService.service.groupBy.mockResolvedValue([
+        { sellerId: 'p1', _count: { sellerId: 5 } },
+        { sellerId: 'p2', _count: { sellerId: 1 } },
+      ]);
+
+      await expect(service.getServiceProviders({ limit: 24 })).resolves.toEqual(
+        [
+          { sellerId: 'p1', serviceCount: 5 },
+          { sellerId: 'p2', serviceCount: 1 },
+        ],
+      );
+
+      const args = mockPrismaService.service.groupBy.mock.calls[0][0];
+      expect(args.by).toEqual(['sellerId']);
+      expect(args.where).toEqual({
+        isActive: true,
+        sellerId: { notIn: ['banned-1'] },
+      });
+      expect(args.orderBy[0]).toEqual({ _count: { sellerId: 'desc' } });
+      expect(args.take).toBe(24);
+    });
+
+    it("counts only the category's active subcategories, like the list", async () => {
+      mockPrismaService.serviceSubCategory.findMany.mockResolvedValue([
+        { id: 2 },
+        { id: 5 },
+      ]);
+
+      await service.getServiceProviders({ categoryId: 7, limit: 24 });
+
+      expect(
+        mockPrismaService.serviceSubCategory.findMany,
+      ).toHaveBeenCalledWith({
+        where: { serviceCategoryId: 7, isActive: true },
+        select: { id: true },
+      });
+      expect(
+        mockPrismaService.service.groupBy.mock.calls[0][0].where.subcategoryId,
+      ).toEqual({ in: [2, 5] });
+    });
+
+    it('returns nothing for a category without active subcategories', async () => {
+      await expect(
+        service.getServiceProviders({ categoryId: 7, limit: 24 }),
+      ).resolves.toEqual([]);
+      expect(mockPrismaService.service.groupBy).not.toHaveBeenCalled();
+    });
+
+    it('keeps the limit between 1 and 50', async () => {
+      await service.getServiceProviders({ limit: 500 });
+      await service.getServiceProviders({ limit: 0 });
+      expect(mockPrismaService.service.groupBy.mock.calls[0][0].take).toBe(50);
+      expect(mockPrismaService.service.groupBy.mock.calls[1][0].take).toBe(1);
     });
   });
 
