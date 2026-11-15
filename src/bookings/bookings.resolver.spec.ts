@@ -25,4 +25,27 @@ describe('BookingsResolver fields', () => {
     expect(resolver.client(orphan)).toBeNull();
     expect(resolver.provider(orphan)).toBeNull();
   });
+
+  describe('service', () => {
+    const findBookedService = jest.fn();
+    const withLookup = new BookingsResolver({
+      findBookedService,
+    } as unknown as BookingsService);
+    const service = { id: 2, name: 'Asesoría medioambiental' };
+
+    beforeEach(() => findBookedService.mockReset());
+
+    it('uses the service a read loaded with the booking', () => {
+      const loaded = { ...booking, serviceId: 2, service } as ServiceBooking;
+      expect(withLookup.service(loaded)).toEqual(service);
+      expect(findBookedService).not.toHaveBeenCalled();
+    });
+
+    it("reads it for a booking a mutation returned, so cards don't say 'Servicio no disponible'", async () => {
+      findBookedService.mockResolvedValue(service);
+      const bare = { ...booking, serviceId: 2 } as ServiceBooking;
+      await expect(withLookup.service(bare)).resolves.toEqual(service);
+      expect(findBookedService).toHaveBeenCalledWith(2);
+    });
+  });
 });

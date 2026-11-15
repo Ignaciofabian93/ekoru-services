@@ -9,7 +9,7 @@ import {
   ResolveField,
 } from '@nestjs/graphql';
 import { BookingPaymentMode } from '../graphql/enums/index.js';
-import { Seller } from '../services/entities/index.js';
+import { Seller, Service } from '../services/entities/index.js';
 import { BookingsService } from './bookings.service.js';
 import { ServiceBooking, ServiceBookingConnection } from './entities/index.js';
 import {
@@ -55,6 +55,17 @@ export class BookingsResolver {
   @ResolveField(() => Seller, { name: 'provider', nullable: true })
   provider(@Parent() booking: ServiceBooking): Pick<Seller, 'id'> | null {
     return booking.providerId ? { id: booking.providerId } : null;
+  }
+
+  /**
+   * The booked service. The reads load it with the booking; a booking that a
+   * mutation returns doesn't carry it, so it is read here. Without it the web
+   * and the app showed "Servicio no disponible" on every booking card.
+   */
+  @ResolveField(() => Service, { name: 'service', nullable: true })
+  service(@Parent() booking: ServiceBooking) {
+    if (booking.service !== undefined) return booking.service;
+    return this.bookingsService.findBookedService(booking.serviceId);
   }
 
   /** The booking's client or provider, or a platform admin with MANAGE_ORDERS. */

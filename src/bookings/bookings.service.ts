@@ -157,6 +157,14 @@ export class BookingsService {
     }
   }
 
+  /**
+   * The service a booking is for, active or not, for the `service` field of a
+   * booking that was read without it (the answer of a booking mutation).
+   */
+  findBookedService(serviceId: number) {
+    return this.prisma.service.findUnique({ where: { id: serviceId } });
+  }
+
   async getServiceBookings({
     page,
     pageSize,
@@ -176,6 +184,7 @@ export class BookingsService {
         skip,
         take,
         orderBy: { scheduledDate: 'asc' },
+        include: { service: true },
       });
 
       return createPaginatedResponse(bookings, count, page, pageSize);
@@ -209,6 +218,7 @@ export class BookingsService {
         skip,
         take,
         orderBy: { scheduledDate: 'asc' },
+        include: { service: true },
       });
 
       return createPaginatedResponse(bookings, count, page, pageSize);
@@ -244,6 +254,7 @@ export class BookingsService {
         skip,
         take,
         orderBy: { scheduledDate: 'asc' },
+        include: { service: true },
       });
 
       return createPaginatedResponse(bookings, count, page, pageSize);
@@ -275,6 +286,7 @@ export class BookingsService {
         skip,
         take,
         orderBy: { scheduledDate: 'asc' },
+        include: { service: true },
       });
 
       return createPaginatedResponse(bookings, count, page, pageSize);

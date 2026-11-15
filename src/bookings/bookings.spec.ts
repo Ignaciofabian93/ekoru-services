@@ -153,6 +153,7 @@ describe('BookingsService', () => {
         skip: 0,
         take: 10,
         orderBy: { scheduledDate: 'asc' },
+        include: { service: true },
       });
       expect(result.nodes).toHaveLength(1);
       expect(result.pageInfo.totalCount).toBe(1);
@@ -176,6 +177,7 @@ describe('BookingsService', () => {
         skip: 0,
         take: 10,
         orderBy: { scheduledDate: 'asc' },
+        include: { service: true },
       });
     });
 
@@ -213,6 +215,7 @@ describe('BookingsService', () => {
         skip: 0,
         take: 10,
         orderBy: { scheduledDate: 'asc' },
+        include: { service: true },
       });
       expect(result.nodes).toHaveLength(1);
     });
@@ -236,6 +239,7 @@ describe('BookingsService', () => {
         skip: 0,
         take: 10,
         orderBy: { scheduledDate: 'asc' },
+        include: { service: true },
       });
     });
 
@@ -277,6 +281,7 @@ describe('BookingsService', () => {
         skip: 0,
         take: 10,
         orderBy: { scheduledDate: 'asc' },
+        include: { service: true },
       });
       expect(result.nodes).toHaveLength(1);
     });
@@ -300,6 +305,7 @@ describe('BookingsService', () => {
         skip: 0,
         take: 10,
         orderBy: { scheduledDate: 'asc' },
+        include: { service: true },
       });
     });
 
@@ -341,6 +347,7 @@ describe('BookingsService', () => {
         skip: 0,
         take: 10,
         orderBy: { scheduledDate: 'asc' },
+        include: { service: true },
       });
       expect(result.nodes).toHaveLength(1);
     });
